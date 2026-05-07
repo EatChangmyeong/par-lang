@@ -176,6 +176,28 @@ impl ParString {
         Self(slice.to_string().into())
     }
 
+    pub fn from_utf8_lossy(v: Bytes) -> ParString {
+        let s = bytes_utils::Str::from_inner(v)
+            .unwrap_or_else(|e| String::from_utf8_lossy(&e.into_inner()).into_owned().into());
+        Self(s)
+    }
+
+    pub fn from_owner<T>(owner: T) -> ParString
+    where
+        T: AsRef<str> + Send + 'static,
+    {
+        struct Wrapper<T>(T);
+        impl<T: AsRef<str>> AsRef<[u8]> for Wrapper<T> {
+            fn as_ref(&self) -> &[u8] {
+                self.0.as_ref().as_bytes()
+            }
+        }
+        let bytes = Bytes::from_owner(Wrapper(owner));
+        // SAFETY: the bytes content of `bytes` is derived from a `str`,
+        //         and thus must be valid UTF-8.
+        Self(unsafe { bytes_utils::Str::from_inner_unchecked(bytes) })
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -200,5 +222,11 @@ impl From<&'static str> for ParString {
 impl From<String> for ParString {
     fn from(s: String) -> Self {
         Self(s.into())
+    }
+}
+
+impl From<char> for ParString {
+    fn from(c: char) -> Self {
+        ParString::copy_from_slice(c.encode_utf8(&mut [0u8; 4]))
     }
 }

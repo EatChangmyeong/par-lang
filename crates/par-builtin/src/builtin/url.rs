@@ -54,7 +54,7 @@ pub(super) fn provide_url_value(handle: Handle, url: ParsedUrl) {
                     }
                     "path" => {
                         let decoded = percent_decode_str(url.path()).decode_utf8_lossy();
-                        handle.provide_string(ParString::copy_from_slice(&decoded));
+                        handle.provide_string(decoded.into_owned().into());
                         return;
                     }
                     "query" => {

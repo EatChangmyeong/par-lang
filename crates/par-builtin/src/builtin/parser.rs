@@ -245,8 +245,7 @@ impl CharsRemainder for ReaderRemainder {
 
     fn pop_chars(&mut self, n: usize) -> ParString {
         let popped = self.buffer.drain(..n).collect::<Vec<u8>>();
-        let popped = String::from_utf8_lossy(&popped[..]);
-        ParString::copy_from_slice(&popped)
+        ParString::from_utf8_lossy(popped.into())
     }
 
     async fn remaining_chars(&mut self) -> Result<ParString, Self::Err> {
