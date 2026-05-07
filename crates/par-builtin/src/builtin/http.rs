@@ -172,7 +172,7 @@ fn provide_headers_list(mut handle: Handle, headers: &reqwest::header::HeaderMap
     for (name, value) in headers {
         handle.signal(literal!("item"));
         let (name, value) = (
-            ParString::copy_from_slice(name.as_str().as_bytes()),
+            ParString::copy_from_slice(name.as_str()),
             Bytes::copy_from_slice(value.as_bytes()),
         );
         handle.send().concurrently(|mut handle| async {
@@ -629,7 +629,7 @@ async fn build_response(mut handle: Handle) -> Result<Response<ResponseBody>, Pa
     let mut response = Response::builder()
         .status(status)
         .body(BodyExt::boxed(reader_to_body(handle)))
-        .map_err(|err| Bytes::from(err.to_string()))?;
+        .map_err(|err| err.to_string())?;
 
     for (name, value) in headers {
         let Ok(header_name) = HeaderName::from_str(name.as_str()) else {

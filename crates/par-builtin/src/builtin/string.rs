@@ -107,9 +107,7 @@ async fn string_parser_from_reader(mut handle: Handle) {
 
 async fn string_from_bytes(mut handle: Handle) {
     let bytes = handle.receive().bytes().await;
-    handle.provide_string(ParString::copy_from_slice(
-        String::from_utf8_lossy(&bytes).as_bytes(),
-    ));
+    handle.provide_string(ParString::copy_from_slice(&String::from_utf8_lossy(&bytes)));
 }
 
 #[derive(Debug, Clone)]
