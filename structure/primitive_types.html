@@ -1,0 +1,429 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Primitive Types - Par Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for the Par programming language">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Par Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/par-team/par-lang/tree/main/docs" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/par-team/par-lang/edit/main/docs/src/structure/primitive_types.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h1>
+<p>Before taking a stroll through Par’s types, let’s stop by the values that are not built out of
+the ordinary type connectives: the <em>primitives</em>.</p>
+<p>Par currently has seven primitive types:</p>
+<ul>
+<li><strong><code>Nat</code></strong> – natural numbers, starting from zero, arbitrary size. They are a subtype of <code>Int</code>.</li>
+<li><strong><code>Int</code></strong> – positive and negative whole numbers, arbitrary size.</li>
+<li><strong><code>Float</code></strong> – IEEE-754 double-precision floating-point numbers.</li>
+<li><strong><code>String</code></strong> – UTF-8 encoded text. It is a subtype of <code>Bytes</code>.</li>
+<li><strong><code>Char</code></strong> – a single Unicode character. It is a subtype of <code>String</code>.</li>
+<li><strong><code>Byte</code></strong> – a single 8-bit value. It is a subtype of <code>Bytes</code>.</li>
+<li><strong><code>Bytes</code></strong> – a contiguous sequence of bytes.</li>
+</ul>
+<p>Primitives are the one place where Par is not fully structural. User-defined types are aliases:
+their shape is their meaning. Primitive types are opaque, because they need efficient runtime
+representations and special operations.</p>
+<h2 id="literals"><a class="header" href="#literals">Literals</a></h2>
+<p>Primitive literals are always available. You do not need to import anything to write them.</p>
+<pre><code class="language-par">def Natural = 42       // Nat
+def Integer = -7       // Int
+def Floating = 3.14    // Float
+def Text = "Hello"     // String
+def Character = "H"    // Char
+def OneByte = &lt;&lt;65&gt;&gt;   // Byte
+def ManyBytes = &lt;&lt;65 66 67&gt;&gt;  // Bytes
+</code></pre>
+<p>Integer and natural number literals may use underscores for readability:</p>
+<pre><code class="language-par">def Million = 1_000_000
+</code></pre>
+<p>Float literals have a fractional part, and may use scientific notation:</p>
+<pre><code class="language-par">def Piish = 3.14
+def Half = 0.5
+def Avogadroish = 6.02e23
+</code></pre>
+<p>Strings use double quotes and normal escape sequences:</p>
+<pre><code class="language-par">def Greeting = "Hello\nWorld"
+</code></pre>
+<p>A <code>Char</code> literal is just a string literal containing exactly one character:</p>
+<pre><code class="language-par">def Letter = "a"
+def Newline = "\n"
+</code></pre>
+<p>Byte and bytes literals use double angle brackets. A single byte literal is inferred as <code>Byte</code>;
+multiple bytes, or the empty literal, are inferred as <code>Bytes</code>.</p>
+<pre><code class="language-par">def A = &lt;&lt;65&gt;&gt;
+def ABC = &lt;&lt;65 66 67&gt;&gt;
+def Empty = &lt;&lt;&gt;&gt;
+</code></pre>
+<p>Byte values are stored modulo 256, so out-of-range byte literal values wrap around.</p>
+<h2 id="operators"><a class="header" href="#operators">Operators</a></h2>
+<p>Numbers are usually manipulated with operators, not with imported helper functions.</p>
+<pre><code class="language-par">def Arithmetic = 1 + 2 * 3       // = 7
+def Grouped = {1 + 2} * 3        // = 9
+def Ratio = 22.0 / 7.0
+def Difference = 10 - 3
+def Negative = neg 5
+</code></pre>
+<p>The operators <code>+</code>, <code>*</code>, and <code>/</code> work on <code>Nat</code>, <code>Int</code>, and <code>Float</code>.
+The operators <code>-</code> and <code>neg</code> work on signed numbers: <code>Int</code> and <code>Float</code>.</p>
+<p>Comparisons work on primitive values too:</p>
+<pre><code class="language-par">def Smaller = 3 &lt; 10          // = .true!
+def SameText = "hi" == "hi"   // = .true!
+def Different = "a" != "b"    // = .true!
+</code></pre>
+<p>They produce a <code>Bool</code>, which is described below. Comparisons also chain:</p>
+<pre><code class="language-par">def InRange = 0 &lt;= 5 &lt; 10
+</code></pre>
+<p>Chained comparisons behave as you would expect: the expression above means <code>0 &lt;= 5 and 5 &lt; 10</code>,
+with the middle expression evaluated only once.</p>
+<p>Reassigning versions of the arithmetic operators are additionally available in the <a href="../process_syntax.html">process syntax</a>, specifically <code>+=</code>, <code>-=</code>, <code>*=</code>, and <code>/=</code>:</p>
+<pre><code class="language-par">def Five = do {
+  let n = 2
+  n += 3  // equivalent to `let n = n + 3`
+} in n
+</code></pre>
+<h2 id="booleans"><a class="header" href="#booleans">Booleans</a></h2>
+<p><code>Bool</code> is not a primitive type. It is an ordinary <a href="../types/either.html"><code>either</code></a> type from
+<code>@core/Bool</code>:</p>
+<pre><code class="language-par">type Bool = either {
+  .false!,
+  .true!,
+}
+</code></pre>
+<p>Boolean values are written as <code>.true!</code> and <code>.false!</code>.</p>
+<pre><code class="language-par">def Yes = .true!
+def No = .false!
+</code></pre>
+<p>Boolean expressions use <code>and</code>, <code>or</code>, and <code>not</code>:</p>
+<pre><code class="language-par">def Both = .true! and .false!
+def Either = .true! or .false!
+def Neither = not .true!
+</code></pre>
+<p>These same words have extra power in conditions: they short-circuit, and can carry bindings from
+matches. That is covered in <a href="../quality_of_life/if.html">Conditions &amp; <code>if</code></a>.</p>
+<h2 id="template-strings"><a class="header" href="#template-strings">Template Strings</a></h2>
+<p>Backtick strings are template strings. They are still <code>String</code> values, but they can contain
+interpolation.</p>
+<p>Use <code>${...}</code> to splice in an expression that already has type <code>String</code>:</p>
+<pre><code class="language-par">def Name = "Ada"
+def Greeting = `Hello, ${Name}!`
+</code></pre>
+<p>Use <code>#{...}</code> to splice in any value that can be displayed as data:</p>
+<pre><code class="language-par">def Count = 3
+def Message = `You have #{Count} messages.`
+</code></pre>
+<p>The <code>#{...}</code> form uses <code>@core/Data.ToString</code> under the hood. It works for primitives and for
+ordinary data structures such as pairs, eithers, and lists of data.</p>
+<p>Template strings may span multiple lines, and support the usual string escapes. To write syntax
+that would otherwise start or end template behavior, escape it:</p>
+<pre><code class="language-par">def LiteralPieces = `Use \` for backticks, \${ for string interpolation, and \#{ for data.`
+</code></pre>
+<h2 id="naming-primitive-types"><a class="header" href="#naming-primitive-types">Naming Primitive Types</a></h2>
+<p>Literals do not need imports, but explicit type names do.</p>
+<pre><code class="language-par">module Main
+
+import {
+  @core/Int
+  @core/String
+}
+
+def Age: Int = 42
+def Name: String = "Ada"
+</code></pre>
+<p>The same imports give access to helper functions from those modules.</p>
+<pre><code class="language-par">module Main
+
+import {
+  @core/Int
+  @core/Nat
+}
+
+def Magnitude = Int.Abs(-1000)
+def Remainder = Int.Mod(-13, 5)
+def Numbers = Nat.Range(0, 5)  // *(0, 1, 2, 3, 4)
+</code></pre>
+<p>Every package automatically depends on <code>@core</code>, but its modules are not imported automatically.</p>
+<h2 id="useful-primitive-modules"><a class="header" href="#useful-primitive-modules">Useful Primitive Modules</a></h2>
+<p>The primitive modules contain operations that are not just generic arithmetic or comparison.
+The examples below are only a taste; use <code>par doc</code> to browse the full built-in API.</p>
+<h3 id="corenat"><a class="header" href="#corenat"><code>@core/Nat</code></a></h3>
+<p><code>Nat</code> has helpers for finite repetition and natural ranges:</p>
+<pre><code class="language-par">module Main
+
+import @core/Nat
+
+def ThreeSteps = Nat.Repeat(3)
+def ZeroToFour = Nat.Range(0, 5)
+</code></pre>
+<p><code>Nat.Repeat(n)</code> produces a recursive value with exactly <code>n</code> steps. It shows up often when you need
+to loop a known number of times.</p>
+<h3 id="coreint"><a class="header" href="#coreint"><code>@core/Int</code></a></h3>
+<p><code>Int</code> has helpers where the result type is not just “another number”.</p>
+<pre><code class="language-par">module Main
+
+import @core/Int
+
+def Absolute: Nat = Int.Abs(-12)
+def Modulo: Nat = Int.Mod(-13, 5)
+def FromTo = Int.Range(-2, 3)
+</code></pre>
+<h3 id="corefloat"><a class="header" href="#corefloat"><code>@core/Float</code></a></h3>
+<p><code>Float</code> has constants, conversions, predicates, and math functions:</p>
+<pre><code class="language-par">module Main
+
+import @core/Float
+
+def Tau = 2.0 * Float.Pi
+def Root = Float.Sqrt(9.0)
+def Rounded = Float.Round(3.6)
+def CloseEnough = Float.Equals(1.0, 1.05, 0.1)
+</code></pre>
+<p><code>Float.Equals</code> remains useful because it compares with a tolerance. The <code>==</code> operator compares data
+directly.</p>
+<h3 id="corestring"><a class="header" href="#corestring"><code>@core/String</code></a></h3>
+<p>Strings can be built incrementally:</p>
+<pre><code class="language-par">module Main
+
+import @core/String
+
+def Hello = String.Builder
+  .add("Hello")
+  .add(", ")
+  .add("world!")
+  .build
+</code></pre>
+<p>They can also be parsed through <code>String.Parser</code>. The parser is a larger tool, useful when you want
+to read characters or match patterns:</p>
+<pre><code class="language-par">module Main
+
+import @core/String
+
+def ParserFromText = String.Parser("abc")
+</code></pre>
+<h3 id="corechar-and-corebyte"><a class="header" href="#corechar-and-corebyte"><code>@core/Char</code> and <code>@core/Byte</code></a></h3>
+<p><code>Char.Is</code> and <code>Byte.Is</code> check membership in character or byte classes:</p>
+<pre><code class="language-par">module Main
+
+import {
+  @core/Byte
+  @core/Char
+}
+
+def Space = Char.Is(" ", .whitespace!)
+def HighByte = Byte.Is(&lt;&lt;192&gt;&gt;, .range(&lt;&lt;128&gt;&gt;, &lt;&lt;255&gt;&gt;)!)
+</code></pre>
+<h3 id="corebytes"><a class="header" href="#corebytes"><code>@core/Bytes</code></a></h3>
+<p><code>Bytes</code> has readers, parsers, and builders for byte-oriented protocols:</p>
+<pre><code class="language-par">module Main
+
+import @core/Bytes
+
+def EmptyReader = Bytes.Reader(&lt;&lt;&gt;&gt;)
+def Size = Bytes.Length(&lt;&lt;65 66 67&gt;&gt;)
+</code></pre>
+<p>That is enough about primitives for now. The rest of the docs will introduce the structural types
+that most Par programs are built from.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../structure/packages_and_modules.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../structure/let_expressions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../structure/packages_and_modules.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../structure/let_expressions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
