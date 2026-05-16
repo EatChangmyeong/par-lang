@@ -383,12 +383,12 @@ exit!
 <p>This works for more complex command chains too. Consider this type for polling data with possible errors:</p>
 <pre><code class="language-par">type Poll&lt;e, a&gt; = iterative choice {
   .close =&gt; Result&lt;e, !&gt;,
-  .poll =&gt; Result&lt;e, (a) self&gt;,
+  .next =&gt; Result&lt;e, (a) self&gt;,
 }
 </code></pre>
 <p>You can poll an element and handle errors seamlessly:</p>
 <pre><code class="language-par">// source : Poll&lt;Os.Error, String&gt;
-source.poll.try[value]
+source.next.try[value]
 </code></pre>
 <p>After this command, <code>source</code> maintains its <code>Poll&lt;Os.Error, String&gt;</code> type and value contains the successfully polled <code>String</code>.</p>
 <!-- moved `default` to the end of this chapter -->
