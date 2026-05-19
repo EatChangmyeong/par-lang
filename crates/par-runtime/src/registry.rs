@@ -1,21 +1,64 @@
 use crate::flat::runtime::ExternalFn;
-use crate::linker::{Linked, PackageID, Unlinked};
+use crate::linker::{Linked, Unlinked};
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::LazyLock;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PackageRef<'a> {
+    Builtin(BuiltinPackage),
     Special(&'a str),
     Local(&'a str),
     Remote(&'a str),
 }
-#[derive(Hash, Eq, PartialEq, Clone, Debug)]
+
+impl PackageRef<'_> {
+    pub const CORE: Self = Self::Builtin(BuiltinPackage::Core);
+    pub const BASIC: Self = Self::Builtin(BuiltinPackage::Basic);
+}
+
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+pub enum BuiltinPackage {
+    Core,
+    Basic,
+}
+
+impl BuiltinPackage {
+    pub const ALL: &[Self] = &[Self::Core, Self::Basic];
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "core" => Some(BuiltinPackage::Core),
+            "basic" => Some(BuiltinPackage::Basic),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BuiltinPackage::Core => "core",
+            BuiltinPackage::Basic => "basic",
+        }
+    }
+}
+
+impl fmt::Display for BuiltinPackage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct DefinitionRef<'a> {
     pub package: PackageRef<'a>,
     pub path: &'a [&'a str],
     pub module: &'a str,
     pub name: &'a str,
 }
+
+#[derive(Clone, Copy)]
 pub struct ExternalDef {
     pub path: DefinitionRef<'static>,
     pub f: ExternalFn,
@@ -23,24 +66,15 @@ pub struct ExternalDef {
 
 inventory::collect!(ExternalDef);
 
-static REGISTRY: LazyLock<HashMap<PackageID, HashMap<Unlinked, Linked>>> = LazyLock::new(|| {
-    let mut map: HashMap<PackageID, HashMap<Unlinked, Linked>> = HashMap::new();
-    for def in inventory::iter::<ExternalDef> {
-        let package = def.path.package.clone().into();
-        if !map.contains_key(&package) {
-            map.insert(package.clone(), HashMap::new());
-        }
-        map.get_mut(&package)
-            .unwrap()
-            .insert(def.path.clone().into(), def.f);
-    }
-    map
+type Registry = HashMap<Unlinked, Linked>;
+
+static REGISTRY: LazyLock<Registry> = LazyLock::new(|| {
+    inventory::iter::<ExternalDef>
+        .into_iter()
+        .map(|&ExternalDef { path, f }| (path.into(), f))
+        .collect()
 });
 
 pub fn get_external_fn(path: &Unlinked) -> Option<ExternalFn> {
-    if let Some(map) = REGISTRY.get(&path.package) {
-        map.get(path).copied()
-    } else {
-        None
-    }
+    REGISTRY.get(path).copied()
 }

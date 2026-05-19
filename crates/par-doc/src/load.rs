@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use par_builtin::builtin_packages;
+use par_builtin::{builtin_packages, inject_builtin_packages};
 use par_core::frontend::TypeError;
 use par_core::frontend::language::{PackageId, Universal};
 use par_core::workspace::{
@@ -63,7 +63,7 @@ fn load_workspace_site(graph: PackageGraph, only_exported: bool) -> Result<Loade
         .clone()
         .into_workspace_packages(None)
         .map_err(DocError::Discovery)?;
-    inject_builtin_packages(&mut workspace_packages)?;
+    inject_builtin_packages(&mut workspace_packages).map_err(DocError::Discovery)?;
 
     let package_meta = build_workspace_meta(
         &graph,
@@ -83,7 +83,7 @@ fn load_workspace_site(graph: PackageGraph, only_exported: bool) -> Result<Loade
 fn load_builtin_site(start: &Path, only_exported: bool) -> Result<LoadedSite, DocError> {
     let workspace_packages = WorkspacePackages {
         root_package: PackageId::Special("__par_doc__".into()),
-        packages: builtin_packages(),
+        packages: builtin_packages().collect(),
     };
     let package_meta = build_builtin_meta(&workspace_packages);
     let workspace = assemble_workspace(workspace_packages).map_err(DocError::Workspace)?;
@@ -363,7 +363,7 @@ fn package_kind(
 ) -> PackageKind {
     if root_package == Some(id) {
         PackageKind::Root
-    } else if matches!(id, PackageId::Special(_)) {
+    } else if matches!(id, PackageId::Special(_) | PackageId::Builtin(_)) {
         PackageKind::BuiltIn
     } else if direct_dependencies.contains(id) {
         PackageKind::DirectDependency
@@ -395,6 +395,7 @@ fn is_module_exported(module: &ParsedModule) -> bool {
 
 fn builtin_package_name(id: &PackageId) -> String {
     match id {
+        PackageId::Builtin(name) => name.to_string(),
         PackageId::Special(name) => name.to_string(),
         PackageId::Local(name) | PackageId::Remote(name) => name.to_string(),
     }
@@ -402,7 +403,7 @@ fn builtin_package_name(id: &PackageId) -> String {
 
 fn package_identity(id: &PackageId) -> String {
     match id {
-        PackageId::Special(_) => String::from("built-in package"),
+        PackageId::Builtin(_) | PackageId::Special(_) => String::from("built-in package"),
         PackageId::Local(path) | PackageId::Remote(path) => path.to_string(),
     }
 }
@@ -413,40 +414,4 @@ fn fallback_out_dir(start: &Path) -> PathBuf {
     } else {
         start.parent().unwrap_or_else(|| Path::new(".")).join("doc")
     }
-}
-
-fn inject_builtin_packages(workspace_packages: &mut WorkspacePackages) -> Result<(), DocError> {
-    let builtin_packages = builtin_packages();
-    let builtin_aliases = builtin_packages
-        .iter()
-        .map(|package| match &package.id {
-            PackageId::Special(name) => Ok((name.to_string(), package.id.clone())),
-            PackageId::Local(_) | PackageId::Remote(_) => {
-                Err(WorkspaceDiscoveryError::DependencyAliasCollision {
-                    package: package.id.clone(),
-                    alias: String::from("<builtin>"),
-                })
-            }
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(DocError::Discovery)?;
-
-    for package in &mut workspace_packages.packages {
-        for (alias, builtin_id) in &builtin_aliases {
-            if package.dependencies.contains_key(alias) {
-                return Err(DocError::Discovery(
-                    WorkspaceDiscoveryError::DependencyAliasCollision {
-                        package: package.id.clone(),
-                        alias: alias.clone(),
-                    },
-                ));
-            }
-            package
-                .dependencies
-                .insert(alias.clone(), builtin_id.clone());
-        }
-    }
-
-    workspace_packages.packages.extend(builtin_packages);
-    Ok(())
 }

@@ -115,6 +115,7 @@ fn kind_dir(kind: PackageKind) -> &'static str {
 
 fn package_identity_segment(id: &PackageId) -> String {
     match id {
+        PackageId::Builtin(name) => encode_segment(name.as_str()),
         PackageId::Special(name) | PackageId::Local(name) | PackageId::Remote(name) => {
             encode_segment(name.as_str())
         }

@@ -2,7 +2,7 @@ use crate::flat::arena::{Arena, Index};
 use crate::flat::runtime::{
     ExternalFn, Global, GlobalCont, GlobalValue, Package, PackageBody, PackagePtr,
 };
-use crate::registry::{DefinitionRef, PackageRef, get_external_fn};
+use crate::registry::{BuiltinPackage, DefinitionRef, PackageRef, get_external_fn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{self, Display};
@@ -13,6 +13,7 @@ pub type Linked = ExternalFn;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PackageID {
+    Builtin(BuiltinPackage),
     Special(String),
     Local(String),
     Remote(String),
@@ -34,6 +35,7 @@ pub struct LinkError {
 impl<'a> From<PackageRef<'a>> for PackageID {
     fn from(package: PackageRef) -> Self {
         match package {
+            PackageRef::Builtin(name) => PackageID::Builtin(name),
             PackageRef::Special(name) => PackageID::Special(name.to_string()),
             PackageRef::Local(name) => PackageID::Local(name.to_string()),
             PackageRef::Remote(name) => PackageID::Remote(name.to_string()),
@@ -55,6 +57,7 @@ impl<'a> From<DefinitionRef<'a>> for Unlinked {
 impl Display for PackageID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Builtin(name) => write!(f, "@{name}"),
             Self::Special(name) | Self::Local(name) | Self::Remote(name) => write!(f, "@{name}"),
         }
     }
@@ -63,6 +66,9 @@ impl Display for PackageID {
 impl Display for Unlinked {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let package_prefix = match &self.package {
+            PackageID::Builtin(name) => {
+                format!("@{name}/")
+            }
             PackageID::Special(name) | PackageID::Local(name) | PackageID::Remote(name) => {
                 format!("@{name}/")
             }

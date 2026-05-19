@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::package_utils::{SourceLookup, source_for_type_error};
 use arcstr::literal;
-use par_builtin::builtin_packages;
+use par_builtin::inject_builtin_packages;
 use par_core::frontend::{
     TypeError,
     language::{PackageId, Universal},
@@ -106,19 +106,22 @@ pub fn default_workspace_packages_from_path(
     start: impl AsRef<Path>,
     overrides: Option<&SourceOverrides>,
 ) -> Result<WorkspacePackages, WorkspaceDiscoveryError> {
-    let discovered = discover_workspace_packages_from_path(start, overrides)?;
-    inject_builtin_packages(discovered)
+    let mut discovered = discover_workspace_packages_from_path(start, overrides)?;
+    inject_builtin_packages(&mut discovered)?;
+    Ok(discovered)
 }
 
 pub fn default_workspace_packages_from_parsed(
     root_package: PackageId,
     local: ParsedPackage,
 ) -> WorkspacePackages {
-    inject_builtin_packages(WorkspacePackages {
+    let mut packages = WorkspacePackages {
         root_package: root_package.clone(),
         packages: vec![WorkspacePackage::new(root_package, local)],
-    })
-    .expect("synthetic workspace should not conflict with builtin aliases")
+    };
+    inject_builtin_packages(&mut packages)
+        .expect("synthetic workspace should not conflict with builtin aliases");
+    packages
 }
 
 pub fn assemble_default_workspace(
@@ -173,39 +176,4 @@ pub(crate) fn checked_workspace_from_single_file(
         }],
         PackageId::Special(literal!("__synthetic__")),
     )
-}
-
-fn inject_builtin_packages(
-    mut workspace_packages: WorkspacePackages,
-) -> Result<WorkspacePackages, WorkspaceDiscoveryError> {
-    let builtin_packages = builtin_packages();
-    let builtin_aliases = builtin_packages
-        .iter()
-        .map(|package| match &package.id {
-            PackageId::Special(name) => Ok((name.to_string(), package.id.clone())),
-            PackageId::Local(_) | PackageId::Remote(_) => {
-                Err(WorkspaceDiscoveryError::DependencyAliasCollision {
-                    package: package.id.clone(),
-                    alias: String::from("<builtin>"),
-                })
-            }
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    for package in &mut workspace_packages.packages {
-        for (alias, builtin_id) in &builtin_aliases {
-            if package.dependencies.contains_key(alias) {
-                return Err(WorkspaceDiscoveryError::DependencyAliasCollision {
-                    package: package.id.clone(),
-                    alias: alias.clone(),
-                });
-            }
-            package
-                .dependencies
-                .insert(alias.clone(), builtin_id.clone());
-        }
-    }
-
-    workspace_packages.packages.extend(builtin_packages);
-    Ok(workspace_packages)
 }

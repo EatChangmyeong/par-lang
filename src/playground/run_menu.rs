@@ -321,6 +321,9 @@ fn package_label(root_package: &PackageId, package: &PackageId) -> String {
     }
 
     match package {
+        PackageId::Builtin(name) => {
+            format!("@{name}")
+        }
         PackageId::Special(name) | PackageId::Local(name) | PackageId::Remote(name) => {
             format!("@{name}")
         }

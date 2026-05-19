@@ -338,7 +338,7 @@ fn module_path_parts(path: &par_core::workspace::ModulePath) -> (String, bool, S
 fn package_identity_href(id: &PackageId) -> String {
     match id {
         PackageId::Remote(path) => format!("https://{path}"),
-        PackageId::Special(_) | PackageId::Local(_) => String::new(),
+        PackageId::Builtin(_) | PackageId::Special(_) | PackageId::Local(_) => String::new(),
     }
 }
 

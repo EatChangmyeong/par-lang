@@ -259,7 +259,7 @@ struct PollInfo {
 }
 
 fn poll_token_tree() -> Tree<Unlinked> {
-    Tree::External(POLL_TOKEN.clone().into())
+    Tree::External(POLL_TOKEN.into())
 }
 
 impl Tree<Unlinked> {
@@ -326,6 +326,7 @@ impl Compiler {
                 DefinitionBody::External(_) => {
                     let def_ref = Unlinked {
                         package: match &name.module.package {
+                            PackageId::Builtin(pkg) => PackageID::Builtin(*pkg),
                             PackageId::Special(name) => PackageID::Special(name.to_string()),
                             PackageId::Local(name) => PackageID::Local(name.to_string()),
                             PackageId::Remote(name) => PackageID::Remote(name.to_string()),

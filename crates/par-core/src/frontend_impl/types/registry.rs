@@ -3,6 +3,8 @@ use crate::frontend::language::Unresolved;
 use par_runtime::registry::{DefinitionRef, PackageRef};
 use std::collections::HashMap;
 use std::sync::LazyLock;
+
+#[derive(Clone)]
 pub struct ExternalTypeDef {
     pub path: DefinitionRef<'static>,
     pub typ: Type<Unresolved>,
@@ -10,29 +12,18 @@ pub struct ExternalTypeDef {
 
 inventory::collect!(ExternalTypeDef);
 
-static REGISTRY: LazyLock<HashMap<PackageRef, HashMap<DefinitionRef, Type<Unresolved>>>> =
-    LazyLock::new(|| {
-        let mut map = HashMap::new();
-        for def in inventory::iter::<ExternalTypeDef> {
-            if !map.contains_key(&def.path.package) {
-                map.insert(def.path.package.clone(), HashMap::new());
-            }
-            map.get_mut(&def.path.package)
-                .unwrap()
-                .insert(def.path.clone(), def.typ.clone());
-        }
-        map
-    });
+type Registry = HashMap<PackageRef<'static>, Vec<&'static ExternalTypeDef>>;
 
-pub fn get_external_type_defs(package: &PackageRef) -> Vec<ExternalTypeDef> {
-    if let Some(map) = REGISTRY.get(package) {
-        map.iter()
-            .map(|(path, typ)| ExternalTypeDef {
-                path: path.clone(),
-                typ: typ.clone(),
-            })
-            .collect()
-    } else {
-        Vec::new()
+static REGISTRY: LazyLock<Registry> = LazyLock::new(|| {
+    let mut map: Registry = HashMap::new();
+    for def in inventory::iter::<ExternalTypeDef> {
+        map.entry(def.path.package).or_default().push(def);
     }
+    map
+});
+
+pub fn get_external_type_defs(
+    package: PackageRef,
+) -> impl Iterator<Item = &'static ExternalTypeDef> {
+    REGISTRY.get(&package).into_iter().flatten().copied()
 }

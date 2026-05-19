@@ -17,7 +17,10 @@ use crate::{
     location::{Span, Spanning},
 };
 use arcstr::{ArcStr, literal};
-use par_runtime::primitive::{ParString, Primitive};
+use par_runtime::{
+    primitive::{ParString, Primitive},
+    registry::BuiltinPackage,
+};
 
 #[derive(Clone, Debug)]
 pub struct LocalName {
@@ -145,6 +148,7 @@ pub enum Resolved {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PackageId {
+    Builtin(BuiltinPackage),
     Special(ArcStr),
     Local(ArcStr),
     Remote(ArcStr),
@@ -675,6 +679,7 @@ impl Display for Unresolved {
 impl Display for Universal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.package {
+            PackageId::Builtin(name) => write!(f, "@{name}")?,
             PackageId::Special(name) => write!(f, "@{name}")?,
             PackageId::Local(name) | PackageId::Remote(name) => {
                 write!(f, "\"{name}\"")?;
@@ -693,6 +698,7 @@ impl Display for Universal {
 impl Display for PackageId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            PackageId::Builtin(name) => write!(f, "@{name}"),
             PackageId::Special(name) | PackageId::Local(name) | PackageId::Remote(name) => {
                 write!(f, "@{name}")
             }
