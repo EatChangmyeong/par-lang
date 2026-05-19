@@ -17,10 +17,8 @@ use crate::{
     location::{Span, Spanning},
 };
 use arcstr::{ArcStr, literal};
-use par_runtime::{
-    primitive::{ParString, Primitive},
-    registry::BuiltinPackage,
-};
+use par_runtime::pkgid::PackageId;
+use par_runtime::primitive::{ParString, Primitive};
 
 #[derive(Clone, Debug)]
 pub struct LocalName {
@@ -144,14 +142,6 @@ pub enum Resolved {
         module: String,
     },
     BuiltinOperator(BuiltinOperatorModule),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum PackageId {
-    Builtin(BuiltinPackage),
-    Special(ArcStr),
-    Local(ArcStr),
-    Remote(ArcStr),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -678,12 +668,10 @@ impl Display for Unresolved {
 
 impl Display for Universal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.package {
-            PackageId::Builtin(name) => write!(f, "@{name}")?,
-            PackageId::Special(name) => write!(f, "@{name}")?,
-            PackageId::Local(name) | PackageId::Remote(name) => {
-                write!(f, "\"{name}\"")?;
-            }
+        if self.package.is_regular() {
+            write!(f, "\"{}\"", self.package.name())?;
+        } else {
+            write!(f, "@{}", self.package.name())?;
         }
 
         write!(f, "/")?;
@@ -691,17 +679,6 @@ impl Display for Universal {
             write!(f, "{}", self.module)
         } else {
             write!(f, "{}/{}", self.directories.join("/"), self.module)
-        }
-    }
-}
-
-impl Display for PackageId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PackageId::Builtin(name) => write!(f, "@{name}"),
-            PackageId::Special(name) | PackageId::Local(name) | PackageId::Remote(name) => {
-                write!(f, "@{name}")
-            }
         }
     }
 }

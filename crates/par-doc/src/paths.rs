@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use par_core::frontend::language::PackageId;
+use par_runtime::pkgid::PackageId;
 use pathdiff::diff_paths;
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 
@@ -90,7 +90,7 @@ pub fn relative_href_with_anchor(from_page: &Path, to_page: &Path, anchor: &str)
 fn package_page_path(id: &PackageId, kind: PackageKind) -> PathBuf {
     let mut path = PathBuf::from("packages").join(kind_dir(kind));
     if kind != PackageKind::Root {
-        path = path.join(package_identity_segment(id));
+        path = path.join(encode_segment(id.name()));
     }
     path.join("index.html")
 }
@@ -110,15 +110,6 @@ fn kind_dir(kind: PackageKind) -> &'static str {
         PackageKind::BuiltIn => "builtin",
         PackageKind::DirectDependency => "dependency",
         PackageKind::IndirectDependency => "indirect",
-    }
-}
-
-fn package_identity_segment(id: &PackageId) -> String {
-    match id {
-        PackageId::Builtin(name) => encode_segment(name.as_str()),
-        PackageId::Special(name) | PackageId::Local(name) | PackageId::Remote(name) => {
-            encode_segment(name.as_str())
-        }
     }
 }
 

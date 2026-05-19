@@ -1,8 +1,8 @@
 use crate::frontend::lower;
 use crate::frontend::parse_source_file;
 use crate::frontend_impl::language::{
-    BuiltinOperatorModule, CompileError, GlobalName, PackageId, Resolved, ResolvedPackageRef,
-    TypeParameter, Universal, Unresolved,
+    BuiltinOperatorModule, CompileError, GlobalName, Resolved, ResolvedPackageRef, TypeParameter,
+    Universal, Unresolved,
 };
 use crate::frontend_impl::parse::SyntaxError;
 use crate::frontend_impl::process;
@@ -19,7 +19,7 @@ use crate::runtime_impl::{Compiled, RuntimeCompilerError};
 use arcstr::ArcStr;
 use indexmap::{IndexMap, IndexSet};
 use par_runtime::linker::Unlinked;
-use par_runtime::registry::BuiltinPackage;
+use par_runtime::pkgid::{BuiltinPackage, PackageId};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map::Entry};
 use std::fmt::{self, Display, Formatter, Write};
@@ -1517,7 +1517,7 @@ impl PackageGraph {
         let root_package = discovery.discover(
             layout,
             root_dir.clone(),
-            PackageId::from_local_path(&root_dir)?,
+            package_id_from_local_path(&root_dir)?,
         )?;
         Ok(discovery.finish(root_package))
     }
@@ -1562,17 +1562,15 @@ fn normalized_package_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-impl PackageId {
-    pub fn from_local_path(path: &Path) -> Result<Self, WorkspaceDiscoveryError> {
-        let canonical = canonicalize_path(path)?;
-        Ok(Self::Local(ArcStr::from(normalized_package_path(
-            &canonical,
-        ))))
-    }
+pub fn package_id_from_local_path(path: &Path) -> Result<PackageId, WorkspaceDiscoveryError> {
+    let canonical = canonicalize_path(path)?;
+    Ok(PackageId::Local(ArcStr::from(normalized_package_path(
+        &canonical,
+    ))))
+}
 
-    pub fn from_remote_source(source: &RemoteDependencySource) -> Self {
-        Self::Remote(ArcStr::from(source.as_str()))
-    }
+pub fn package_id_from_remote_source(source: &RemoteDependencySource) -> PackageId {
+    PackageId::Remote(ArcStr::from(source.as_str()))
 }
 
 fn normalized_path_key(path: &Path) -> String {
@@ -1693,7 +1691,7 @@ impl<'a, H: MissingRemotePackageHandler> PackageGraphDiscovery<'a, H> {
                     let dependency_id = self.discover(
                         dependency_layout,
                         dependency_root.clone(),
-                        PackageId::from_local_path(&dependency_root)?,
+                        package_id_from_local_path(&dependency_root)?,
                     )?;
                     dependencies.insert(alias.clone(), dependency_id);
                 }
@@ -1733,7 +1731,7 @@ impl<'a, H: MissingRemotePackageHandler> PackageGraphDiscovery<'a, H> {
                     let dependency_id = self.discover(
                         dependency_layout,
                         dependency_root,
-                        PackageId::from_remote_source(dependency),
+                        package_id_from_remote_source(dependency),
                     )?;
                     dependencies.insert(alias.clone(), dependency_id);
                 }
@@ -3209,13 +3207,13 @@ def Main = !
         let canonical_root = canonicalize_path(&root).unwrap();
         assert_eq!(
             workspace_packages.root_package,
-            PackageId::from_local_path(&canonical_root).unwrap()
+            package_id_from_local_path(&canonical_root).unwrap()
         );
 
         let workspace = assemble_workspace(workspace_packages).unwrap();
         assert_eq!(
             workspace.root_package(),
-            &PackageId::from_local_path(&canonical_root).unwrap()
+            &package_id_from_local_path(&canonical_root).unwrap()
         );
         assert_eq!(
             workspace
@@ -3724,7 +3722,7 @@ url = \"github.com/example/root\"
         let canonical_root = canonicalize_path(&root).unwrap();
         assert_eq!(
             workspace_packages.root_package,
-            PackageId::from_local_path(&canonical_root).unwrap()
+            package_id_from_local_path(&canonical_root).unwrap()
         );
     }
 

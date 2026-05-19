@@ -26,14 +26,13 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use std::env;
 use std::path::PathBuf;
 
-use par_core::frontend::language::PackageId;
 use par_core::frontend::{TypeDef, get_external_type_defs};
 use par_core::source::FileName;
 use par_core::workspace::{
     ExternalModule, LoadedPackageFile, ModulePath, WorkspaceDiscoveryError, WorkspacePackage,
     WorkspacePackages, parse_loaded_files,
 };
-use par_runtime::registry::BuiltinPackage;
+use par_runtime::pkgid::{BuiltinPackage, PackageId};
 use par_runtime::registry::PackageRef;
 
 pub fn builtin_packages() -> impl Iterator<Item = WorkspacePackage> {

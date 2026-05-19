@@ -3,7 +3,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use askama::Template;
-use par_core::frontend::language::{GlobalName, PackageId, Universal};
+use par_core::frontend::language::{GlobalName, Universal};
+use par_runtime::pkgid::PackageId;
 
 use crate::error::DocError;
 use crate::html::{self, TypeLinkTarget};
@@ -121,7 +122,6 @@ impl<'a> Renderer<'a> {
                 name: package.name.clone(),
                 identity: display_package_identity(package),
                 identity_href: package_identity_href(&package.id),
-                has_identity_link: matches!(package.id, PackageId::Remote(_)),
             },
             modules: &modules,
             has_modules: !modules.is_empty(),
@@ -335,10 +335,10 @@ fn module_path_parts(path: &par_core::workspace::ModulePath) -> (String, bool, S
     }
 }
 
-fn package_identity_href(id: &PackageId) -> String {
+fn package_identity_href(id: &PackageId) -> Option<String> {
     match id {
-        PackageId::Remote(path) => format!("https://{path}"),
-        PackageId::Builtin(_) | PackageId::Special(_) | PackageId::Local(_) => String::new(),
+        PackageId::Remote(path) => Some(format!("https://{path}")),
+        _ => None,
     }
 }
 
@@ -418,8 +418,7 @@ struct PackageCardView {
 struct PackageHeaderView {
     name: String,
     identity: String,
-    identity_href: String,
-    has_identity_link: bool,
+    identity_href: Option<String>,
 }
 
 #[derive(Debug, Clone)]

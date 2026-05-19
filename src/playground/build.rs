@@ -10,11 +10,7 @@ use crate::workspace_support::{
     CheckedWorkspaceBuild, ScopedTypeError, WorkspaceBuildError,
     checked_workspace_from_loaded_package,
 };
-use par_core::frontend::{
-    Definition, DefinitionBody,
-    language::{PackageId, Universal},
-    process::Expression,
-};
+use par_core::frontend::{Definition, DefinitionBody, language::Universal, process::Expression};
 use par_core::source::FileName;
 #[cfg(not(target_family = "wasm"))]
 use par_core::workspace::SourceOverrides;
@@ -23,6 +19,7 @@ use par_core::{
     workspace::{CheckedWorkspace, LoadedPackageFile, WorkspaceDiscoveryError, WorkspaceError},
 };
 use par_runtime::linker::Linked;
+use par_runtime::pkgid::PackageId;
 
 type LoweredDefinition = Definition<Arc<Expression<(), Universal>>, Universal>;
 

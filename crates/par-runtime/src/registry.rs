@@ -1,7 +1,7 @@
 use crate::flat::runtime::ExternalFn;
 use crate::linker::{Linked, Unlinked};
+use crate::pkgid::BuiltinPackage;
 use std::collections::HashMap;
-use std::fmt;
 use std::sync::LazyLock;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -15,39 +15,6 @@ pub enum PackageRef<'a> {
 impl PackageRef<'_> {
     pub const CORE: Self = Self::Builtin(BuiltinPackage::Core);
     pub const BASIC: Self = Self::Builtin(BuiltinPackage::Basic);
-}
-
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
-)]
-pub enum BuiltinPackage {
-    Core,
-    Basic,
-}
-
-impl BuiltinPackage {
-    pub const ALL: &[Self] = &[Self::Core, Self::Basic];
-
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "core" => Some(BuiltinPackage::Core),
-            "basic" => Some(BuiltinPackage::Basic),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            BuiltinPackage::Core => "core",
-            BuiltinPackage::Basic => "basic",
-        }
-    }
-}
-
-impl fmt::Display for BuiltinPackage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
 }
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]

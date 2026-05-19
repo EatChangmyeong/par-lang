@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use par_core::frontend::Type;
-use par_core::frontend::language::{GlobalName, PackageId, Universal};
+use par_core::frontend::language::{GlobalName, Universal};
 use par_core::workspace::ModulePath;
+use par_runtime::pkgid::PackageId;
 
 #[derive(Debug, Clone)]
 pub struct LoadedSite {

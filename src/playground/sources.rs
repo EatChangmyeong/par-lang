@@ -7,11 +7,13 @@ use std::{
 };
 
 use arcstr::literal;
+use par_core::source::FileName;
+use par_core::workspace::LoadedPackageFile;
 #[cfg(not(target_family = "wasm"))]
 use par_core::workspace::{
     PackageLayout, SourceOverrides, WorkspaceDiscoveryError, load_package_source_files,
 };
-use par_core::{frontend::language::PackageId, source::FileName, workspace::LoadedPackageFile};
+use par_runtime::pkgid::PackageId;
 
 use super::examples::PLAYGROUND_EXAMPLES;
 

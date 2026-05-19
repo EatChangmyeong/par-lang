@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use par_core::frontend::TypeError;
-use par_core::frontend::language::{PackageId, Universal};
+use par_core::frontend::language::Universal;
 use par_core::source::FileName;
 use par_core::workspace::ModulePath;
+use par_runtime::pkgid::PackageId;
 
 pub type SourceLookup = HashMap<FileName, Arc<str>>;
 

@@ -8,13 +8,14 @@ use futures::task::{Spawn, SpawnExt};
 use par_core::{
     frontend::{
         Type, Visibility,
-        language::{GlobalName, PackageId, Universal},
+        language::{GlobalName, Universal},
     },
     runtime::{Compiled, TypedHandle, type_supports_readback},
     source::FileName,
     workspace::{CheckedWorkspace, FileImportScope, ModulePath},
 };
 use par_runtime::linker::Linked;
+use par_runtime::pkgid::PackageId;
 use tokio_util::sync::CancellationToken;
 
 use super::readback::Element;
@@ -317,16 +318,9 @@ fn show_package_modules(
 
 fn package_label(root_package: &PackageId, package: &PackageId) -> String {
     if package == root_package {
-        return String::from("This package");
-    }
-
-    match package {
-        PackageId::Builtin(name) => {
-            format!("@{name}")
-        }
-        PackageId::Special(name) | PackageId::Local(name) | PackageId::Remote(name) => {
-            format!("@{name}")
-        }
+        String::from("This package")
+    } else {
+        package.to_string()
     }
 }
 

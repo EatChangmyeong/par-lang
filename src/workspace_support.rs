@@ -3,10 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::package_utils::{SourceLookup, source_for_type_error};
 use arcstr::literal;
 use par_builtin::inject_builtin_packages;
-use par_core::frontend::{
-    TypeError,
-    language::{PackageId, Universal},
-};
+use par_core::frontend::{TypeError, language::Universal};
 use par_core::runtime::{Compiled, RuntimeCompilerError};
 use par_core::source::FileName;
 use par_core::workspace::{
@@ -15,6 +12,7 @@ use par_core::workspace::{
     discover_workspace_packages_from_path, parse_loaded_files,
 };
 use par_runtime::linker::{Linked, Unlinked};
+use par_runtime::pkgid::PackageId;
 
 #[derive(Debug, Clone)]
 pub(crate) enum WorkspaceBuildError {
