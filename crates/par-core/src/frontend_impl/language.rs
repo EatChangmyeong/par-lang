@@ -1102,7 +1102,7 @@ impl Context {
                 TemplatePart::Literal(value) => {
                     items.push(Expression::Primitive(
                         Span::None,
-                        Primitive::String(ParString::copy_from_slice(value.as_bytes())),
+                        Primitive::String(ParString::from_owner(value.clone())),
                     ));
                 }
                 TemplatePart::StringExpr(expr) => {
@@ -1121,10 +1121,7 @@ impl Context {
         }
 
         match items.as_slice() {
-            [] => Expression::Primitive(
-                Span::None,
-                Primitive::String(ParString::copy_from_slice(b"")),
-            ),
+            [] => Expression::Primitive(Span::None, Primitive::String(ParString::default())),
             [only] if !has_interpolation => only.clone(),
             _ => Self::apply_expression(
                 &Span::None,

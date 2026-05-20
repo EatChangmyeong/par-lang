@@ -167,38 +167,66 @@ fn number_kind_rank(number: &Number) -> u8 {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ParString {
-    bytes: Bytes,
-}
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default)]
+#[serde(transparent)]
+pub struct ParString(bytes_utils::Str);
 
 impl ParString {
-    pub fn copy_from_slice(slice: &[u8]) -> ParString {
-        let _ = std::str::from_utf8(slice).expect("ParString should be UTF8");
-        Self {
-            bytes: Bytes::copy_from_slice(slice),
+    pub fn copy_from_slice(slice: &str) -> ParString {
+        Self(slice.to_string().into())
+    }
+
+    pub fn from_utf8_lossy(v: Bytes) -> ParString {
+        let s = bytes_utils::Str::from_inner(v)
+            .unwrap_or_else(|e| String::from_utf8_lossy(&e.into_inner()).into_owned().into());
+        Self(s)
+    }
+
+    pub fn from_owner<T>(owner: T) -> ParString
+    where
+        T: AsRef<str> + Send + 'static,
+    {
+        struct Wrapper<T>(T);
+        impl<T: AsRef<str>> AsRef<[u8]> for Wrapper<T> {
+            fn as_ref(&self) -> &[u8] {
+                self.0.as_ref().as_bytes()
+            }
         }
+        let bytes = Bytes::from_owner(Wrapper(owner));
+        // SAFETY: the bytes content of `bytes` is derived from a `str`,
+        //         and thus must be valid UTF-8.
+        Self(unsafe { bytes_utils::Str::from_inner_unchecked(bytes) })
     }
 
     pub fn as_str(&self) -> &str {
-        std::str::from_utf8(&self.bytes).expect("ParString should be UTF8")
+        &self.0
     }
 
     pub fn as_bytes(&self) -> Bytes {
-        self.bytes.clone()
+        self.0.inner().clone()
     }
 
     pub fn substr(&self, range: impl RangeBounds<usize>) -> Self {
-        let bytes = self.bytes.slice(range);
-        let _ = std::str::from_utf8(&bytes).expect("ParString should be UTF8");
-        Self { bytes }
+        let start = range.start_bound().cloned();
+        let end = range.end_bound().cloned();
+        Self(self.0.slice((start, end)))
     }
 }
 
-impl<T: Into<Bytes>> From<T> for ParString {
-    fn from(value: T) -> Self {
-        Self {
-            bytes: value.into(),
-        }
+impl From<&'static str> for ParString {
+    fn from(s: &'static str) -> Self {
+        Self(bytes_utils::Str::from_static(s))
+    }
+}
+
+impl From<String> for ParString {
+    fn from(s: String) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<char> for ParString {
+    fn from(c: char) -> Self {
+        ParString::copy_from_slice(c.encode_utf8(&mut [0u8; 4]))
     }
 }

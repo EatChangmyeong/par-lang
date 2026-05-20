@@ -84,9 +84,7 @@ impl Handle {
 
     pub fn provide_char(self, value: char) {
         self.handle
-            .provide_primitive(Primitive::String(ParString::copy_from_slice(
-                value.encode_utf8(&mut [0u8; 4]).as_bytes(),
-            )))
+            .provide_primitive(Primitive::String(value.into()))
     }
 
     pub fn provide_byte(self, value: u8) {
