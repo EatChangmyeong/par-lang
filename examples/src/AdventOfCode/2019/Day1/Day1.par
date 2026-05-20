@@ -16,17 +16,17 @@ import {
 
 dec FileRead : [String] Result<!, String>
 def FileRead = [path]
-  catch _ => .err! in
-  let try reader = path->Os.Path->Os.OpenFile in
-  let parser = String.ParserFromReader(reader) in
-  let try contents = parser.remainder in
-  .ok contents
+  path->Os.Path->Os.OpenFile
+    ->Result.FlatMap(box [r] r->String.ReadAll)
+    ->Result.MapErr(box [_] !)
 
 dec StringLines : [String] List<String>
-def StringLines = [string] String.Parser(string).begin.match(.repeat.non.char "\n", .one.char "\n").case {
-  .end err => let ! = Result.Always(err) in .end!
-  .fail attempt => .item(Result.Always(attempt.remainder)).end!
-  .match(line, _) reader => .item(line) reader.loop
+def StringLines = [string] String.Parser(string).begin.case {
+  .empty! => .end!,
+  .ready reader => reader.minMax(.repeat.non.char "\n", .one.char "\n")->Result.Always.case {
+    .fail attempt => .item(attempt.remainder->Result.Always).end!,
+    .match(line, _) reader => .item(line) reader.loop,
+  },
 }
 
 dec ListMap : [type a, type b, List<a>, box [a] b] List<b>

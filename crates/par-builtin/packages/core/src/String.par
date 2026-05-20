@@ -25,43 +25,47 @@ export {
   // The error type comes from the underlying source: `either {}` (impossible) when parsing
   // a plain string, or the reader's error type when parsing from a `Bytes.Reader`.
   //
-  // Operations:
+  // Cases:
+  // - `.empty!` — input is cleanly exhausted.
+  // - `.ready parser` — input is available, or the underlying source has failed. In the latter
+  //   case, every parser operation returns `.err`.
+  //
+  // Parser operations:
   // - `.close` — close the parser, returning any source error.
   // - `.remainder` — consume the parser and return all remaining unparsed input.
-  // - `.char` — read the next character. Returns `.end` if input is exhausted,
-  //   or `.char(c)` with the character.
-  // - `.match(prefix, suffix)` — find the leftmost split where `prefix` matches the left part
+  // - `.char` — read the next character.
+  // - `.minMax(prefix, suffix)` — find the leftmost split where `prefix` matches the left part
   //   and `suffix` matches the longest possible right part. Returns `.match(prefix_str, suffix_str)`
-  //   on success, `.fail` if no match (parser position unchanged), or `.end` if input is empty.
-  // - `.matchEnd(prefix, suffix)` — like `.match`, but the suffix extends to the end of input.
+  //   on success, or `.fail` if no match (parser position unchanged).
+  // - `.minMaxEnd(prefix, suffix)` — like `.minMax`, but the suffix extends to the end of input.
   //   Terminates the parser on success.
   //
   // Use `.begin`/`.loop` (from the `recursive` wrapper) to iterate over multiple matches.
   //
   // ```par
-  // let r = String.Parser("Hello, world!")
-  // r.match(.str "Hello", .str ", ").case {
-  //   .match(hello, comma) r => ...
-  //   .fail r => ...
-  //   .end _ => ...
+  // String.Parser("Hello, world!").begin.case {
+  //   .empty! => ...
+  //   .ready r => r.minMax(.str "Hello", .str ", ").case {
+  //     .err e => ...
+  //     .ok .match(hello, comma) r => ...
+  //     .ok .fail r => ...
+  //   }
   // }
   // ```
-  type Parser<e> = recursive iterative@attempt choice {
-    .close => Result<e, !>,
-    .remainder => Result<e, String>,
-    .char => either {
-      .end Result<e, !>,
-      .char(Char) self,
-    },
-    .match(Pattern, Pattern) => either {
-      .end Result<e, !>,
-      .fail self@attempt,
-      .match(String, String) self,
-    },
-    .matchEnd(Pattern, Pattern) => either {
-      .end Result<e, !>,
-      .fail self@attempt,
-      .match(String, String)!,
+  type Parser<e> = recursive either {
+    .empty!,
+    .ready iterative@attempt choice {
+      .close => Result<e, !>,
+      .remainder => Result<e, String>,
+      .char => Result<e, (Char) self>,
+      .minMax(Pattern, Pattern) => Result<e, either {
+        .match(String, String) self,
+        .fail self@attempt,
+      }>,
+      .minMaxEnd(Pattern, Pattern) => Result<e, either {
+        .match(String, String)!,
+        .fail self@attempt,
+      }>,
     },
   }
 
@@ -131,6 +135,10 @@ export {
   // String.Concat(*("Hello", ", ", "world!"))  // = "Hello, world!"
   // ```
   dec Concat : [List<String>] String
+
+  // Reads all bytes from a `Reader` and decodes them into a `String,
+  // replacing invalid sequences with the Unicode replacement character.
+  dec ReadAll : <e>[Bytes.Reader<e>] Result<e, String>
 }
 
 def Quote = external
@@ -145,10 +153,15 @@ def ParserFromReader = external
 
 def Lines = <e>[parser]
   catch e => .end .err e in
-  parser.begin.match(.repeat.one.any!, .str "\n").case {
-    .end try ! => .end .ok!,
-    .fail parser => let try r = parser.remainder in .item(r) .end .ok!,
-    .match(line, _) parser => .item(line) parser.loop,
+  parser.begin.case {
+    .empty! => .end .ok!,
+    .ready parser => {
+      let try result = parser.minMax(.repeat.one.any!, .str "\n") in
+      result.case {
+        .fail parser => let try r = parser.remainder in .item(r) .end .ok!,
+        .match(line, _) parser => .item(line) parser.loop,
+      }
+    },
   }
 
 def Join = [list, sep]
@@ -173,3 +186,8 @@ def Concat = [list]
       builder.add(v)
     } in list.loop,
   }
+
+def ReadAll = <e>[reader] ParserFromReader(reader).case {
+  .empty! => .ok "",
+  .ready p => p.remainder,
+}

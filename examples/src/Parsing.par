@@ -1,0 +1,92 @@
+module Parsing
+
+import {
+  @core/Int
+  @core/String
+  @core/List
+  @core/Option
+  @core/Result
+  @core/Debug
+}
+
+type Nested = recursive either {
+  .null!,
+  .number Int,
+  .list List<self>,
+}
+
+dec ParseNested : [String] Option<Nested>
+def ParseNested = [s] do {
+  let p = String.Parser(s)
+
+  let (res: Option<Nested>) p: Option<String.Parser<either {}>> = chan yield {
+    p.unfounded@json
+    if not p is .ready p => {
+      yield(.none!) <> .none!
+    }
+
+    p.minMax(.repeat.one.whitespace!, .str "null")->Result.Always.case {
+      .match(_, _) => { yield(.some .null!) <> .some p }
+      .fail => {}
+    }
+
+    p.minMax(.repeat.one.whitespace!, .repeat1.one.ascii.digit!)->Result.Always.case {
+      .match(_, digits) => {
+        let default(0) n = digits->Int.FromString
+        yield(.some .number n) <> .some p
+      }
+      .fail => {}
+    }
+
+    p.minMax(.repeat.one.whitespace!, .str "[")->Result.Always.case {
+      .match(_, _) => {
+        let items = List.Builder(type Nested)
+
+        let (item) p = chan yield { p.loop@json }
+        if not p is .some p => {
+          let _ = items.build
+          yield(.none!) <> .none!
+        }
+
+        p.unfounded@list
+        if not p is .ready p => {
+          items.build; yield(.none!) <> .none!
+        }
+
+        if not item is .some item => {
+          p.minMax(.repeat.one.whitespace!, .str "]")->Result.Always.case {
+            .match(_, _) => { yield(.some .list items.build) <> .some p }
+            .fail => { items.build; yield(.none!) <> .some .ready p }
+          }
+        }
+
+        items.add(item)
+
+        p.minMax(.repeat.one.whitespace!, .str ",")->Result.Always.case {
+          .match(_, _) => {
+            let (item) p = chan yield { p.loop@json }
+            if not p is .some p => {
+              let _ = items.build
+              yield(.none!) <> .none!
+            }
+            p.loop@list
+          }
+          .fail => {}
+        }
+        p.minMax(.repeat.one.whitespace!, .str "]")->Result.Always.case {
+          .match(_, _) => { yield(.some .list items.build) <> .some p }
+          .fail => { items.build; yield(.none!) <> .some .ready p }
+        }
+      }
+      .fail => {}
+    }
+
+    yield(.none!) <> .some .ready p
+  }
+
+  if p is .some p and p is .ready p => {
+    p.close->Result.Always?
+  }
+} in res
+
+def Main = Debug.Log(`#{ParseNested("[1, [null, 3]]")}`)

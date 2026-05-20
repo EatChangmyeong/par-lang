@@ -94,8 +94,10 @@ def ServeDir = [root, paths, respond] chan finish {
 
 dec TrimPrefix : [Bytes, Bytes] Bytes
 def TrimPrefix = [prefix, bytes]
-  bytes->Bytes.Parser.matchEnd(.bytes prefix, .repeat.one.any!).case {
-    .end _ => bytes,
-    .fail p => do { p.close } in bytes,
-    .match(_, trimmed)! => trimmed,
+  bytes->Bytes.Parser.begin.case {
+    .empty! => bytes,
+    .ready p => p.minMaxEnd(.bytes prefix, .repeat.one.any!)->Result.Always.case {
+      .fail p => do { p.close } in bytes,
+      .match(_, trimmed)! => trimmed,
+    },
   }

@@ -558,12 +558,15 @@ def ReadAll = [path] chan return {
   catch e => { return <> .err e }
   let try reader = Os.OpenFile(path)
   let parser = Bytes.ParserFromReader(reader)
-  let try contents = parser.remainder
+  let try contents = parser.begin.case {
+    .empty! => .ok <<>>,
+    .some parser => parser.remainder,
+  }
   return <> .ok contents
 }
 ```
 
-This function uses `Bytes.ParserFromReader` to convert the chunked `Bytes.Reader` from `path.openFile` into a parser that provides a convenient `.remainder` method for reading all contents at once. The `catch` block propagates any errors by linking them into an `.err` result, while success links the contents into an `.ok` result.
+This function uses `Bytes.ParserFromReader` to convert the chunked `Bytes.Reader` from `path.openFile` into a parser, then reads the remaining contents from the non-empty parser branch. The `catch` block propagates any errors by linking them into an `.err` result, while success links the contents into an `.ok` result.
 
 ## Providing defaults with `default`
 

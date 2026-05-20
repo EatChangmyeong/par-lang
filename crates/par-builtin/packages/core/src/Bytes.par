@@ -41,33 +41,36 @@ export {
   // A streaming byte parser, parameterized by an error type `e`.
   // Works like `String.Parser` but operates on raw bytes.
   //
-  // Operations:
+  // Cases:
+  // - `.empty!` — input is cleanly exhausted.
+  // - `.ready parser` — input is available, or the underlying source has failed. In the latter
+  //   case, every parser operation returns `.err`.
+  //
+  // Parser operations:
   // - `.close` — close the parser.
   // - `.remainder` — consume the parser and return all remaining bytes.
-  // - `.byte` — read the next byte. Returns `.end` or `.byte(b)`.
-  // - `.match(prefix, suffix)` — find the leftmost split where `prefix` matches the left part
+  // - `.byte` — read the next byte.
+  // - `.minMax(prefix, suffix)` — find the leftmost split where `prefix` matches the left part
   //   and `suffix` matches the longest possible right part. Returns `.match(prefix_bytes, suffix_bytes)`
-  //   on success, `.fail` if no match (parser position unchanged), or `.end` if input is empty.
-  // - `.matchEnd(prefix, suffix)` — like `.match`, but the suffix extends to the end of input.
+  //   on success, or `.fail` if no match (parser position unchanged).
+  // - `.minMaxEnd(prefix, suffix)` — like `.minMax`, but the suffix extends to the end of input.
   //   Terminates the parser on success.
   //
   // Use `.begin`/`.loop` (from the `recursive` wrapper) to iterate over multiple matches.
-  type Parser<e> = recursive iterative@attempt choice {
-    .close => Result<e, !>,
-    .remainder => Result<e, Bytes>,
-    .byte => either {
-      .end Result<e, !>,
-      .byte(Byte) self,
-    },
-    .match(Pattern, Pattern) => either {
-      .end Result<e, !>,
-      .fail self@attempt,
-      .match(Bytes, Bytes) self,
-    },
-    .matchEnd(Pattern, Pattern) => either {
-      .end Result<e, !>,
-      .fail self@attempt,
-      .match(Bytes, Bytes)!,
+  type Parser<e> = recursive either {
+    .empty!,
+    .ready iterative@attempt choice {
+      .close => Result<e, !>,
+      .remainder => Result<e, Bytes>,
+      .byte => Result<e, (Byte) self>,
+      .minMax(Pattern, Pattern) => Result<e, either {
+        .match(Bytes, Bytes) self,
+        .fail self@attempt,
+      }>,
+      .minMaxEnd(Pattern, Pattern) => Result<e, either {
+        .match(Bytes, Bytes)!,
+        .fail self@attempt,
+      }>,
     },
   }
 
@@ -136,6 +139,9 @@ export {
   // )
   // ```
   dec PipeReader : <e>[[Writer<!>] Result<e, !>] Reader<e>
+
+  // Reads all bytes from a `Reader` into a single `Bytes` value.
+  dec ReadAll : <e>[Reader<e>] Result<e, Bytes>
 }
 
 def Length = external
@@ -151,3 +157,8 @@ def EmptyReader = external
 def ParserFromReader = external
 
 def PipeReader = external
+
+def ReadAll = <e>[reader] ParserFromReader(reader).case {
+  .empty! => .ok "",
+  .ready p => p.remainder,
+}

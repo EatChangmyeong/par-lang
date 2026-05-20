@@ -45,13 +45,17 @@ def Main: ! = chan exit {
         console.print("Could not read input")
         step.loop
       }
-      String.Parser(line).char.case {
-        .end _ => {
+      String.Parser(line).case {
+        .empty! => {
           console.print("Empty input")
           step.loop
         },
-        .char(char) rest => {
-          rest.close
+        .ready input => {
+          let (char) rest = input.char->Result.Always
+          let ! = rest.case {
+            .empty! => !,
+            .ready rest => rest.close->Result.Always,
+          }
           if char == "x" => {
             CloseUndoStack(undoStack)
             state.close
