@@ -252,9 +252,6 @@ impl Instance {
         let decl_span = name_info.decl_span();
         let (start, end) = decl_span.points()?;
         let path = decl_span.file()?;
-        if path == FileName::BUILTIN {
-            return None;
-        }
 
         Some(lsp::GotoDefinitionResponse::Scalar(lsp::Location {
             uri: file_name_to_uri(&path)?,
@@ -283,9 +280,6 @@ impl Instance {
         let def_span = name_info.def_span();
         let (start, end) = def_span.points()?;
         let path = def_span.file()?;
-        if path == FileName::BUILTIN {
-            return None;
-        }
 
         Some(lsp::GotoDefinitionResponse::Scalar(lsp::Location {
             uri: file_name_to_uri(&path)?,

@@ -148,11 +148,6 @@ impl Point {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileName(pub ArcStr);
 
-impl FileName {
-    pub const BUILTIN: Self = FileName(arcstr::literal!("par:Builtin"));
-    pub const NATIVE_BUILTIN: Self = FileName(arcstr::literal!("par:NativeBuiltin"));
-}
-
 impl Display for FileName {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str(self.0.as_str())

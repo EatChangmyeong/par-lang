@@ -2,4 +2,6 @@
 
 mod builtin;
 
-pub use builtin::{builtin_packages, inject_builtin_packages};
+pub use builtin::{
+    PAR_BUILTIN_URI_SCHEME, builtin_packages, get_builtin_source, inject_builtin_packages,
+};
