@@ -2,4 +2,4 @@
 
 mod builtin;
 
-pub use builtin::builtin_packages;
+pub use builtin::{builtin_packages, inject_builtin_packages};

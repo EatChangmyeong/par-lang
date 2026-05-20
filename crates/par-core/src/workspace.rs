@@ -1,8 +1,8 @@
 use crate::frontend::lower;
 use crate::frontend::parse_source_file;
 use crate::frontend_impl::language::{
-    BuiltinOperatorModule, CompileError, GlobalName, PackageId, Resolved, ResolvedPackageRef,
-    TypeParameter, Universal, Unresolved,
+    BuiltinOperatorModule, CompileError, GlobalName, Resolved, ResolvedPackageRef, TypeParameter,
+    Universal, Unresolved,
 };
 use crate::frontend_impl::parse::SyntaxError;
 use crate::frontend_impl::process;
@@ -19,6 +19,7 @@ use crate::runtime_impl::{Compiled, RuntimeCompilerError};
 use arcstr::ArcStr;
 use indexmap::{IndexMap, IndexSet};
 use par_runtime::linker::Unlinked;
+use par_runtime::pkgid::{BuiltinPackage, PackageId};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map::Entry};
 use std::fmt::{self, Display, Formatter, Write};
@@ -278,6 +279,7 @@ impl Display for RemoteDependencySource {
 pub struct PackageManifest {
     pub name: String,
     pub dependencies: BTreeMap<String, DependencySpec>,
+    pub builtin: bool,
 }
 
 impl PackageManifest {
@@ -297,6 +299,7 @@ impl PackageManifest {
 
         Ok(Self {
             name: manifest.package.name,
+            builtin: manifest.package.__builtin,
             dependencies: manifest
                 .dependencies
                 .into_iter()
@@ -324,6 +327,7 @@ impl PackageManifest {
         let manifest = ManifestToml {
             package: ManifestPackageToml {
                 name: self.name.clone(),
+                __builtin: self.builtin,
             },
             dependencies: self
                 .dependencies
@@ -351,6 +355,8 @@ struct ManifestToml {
 #[derive(Debug, Serialize, Deserialize)]
 struct ManifestPackageToml {
     name: String,
+    #[serde(default)]
+    __builtin: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -613,6 +619,15 @@ pub enum WorkspaceDiscoveryError {
     PackageCycle {
         cycle: Vec<PathBuf>,
     },
+    UnknownBuiltinPackage {
+        name: String,
+    },
+    DirectDependencyOnBuiltin {
+        package: PackageId,
+    },
+    BuiltinDependencyOnNonBuiltin {
+        package: PackageId,
+    },
 }
 
 impl Display for WorkspaceDiscoveryError {
@@ -739,6 +754,18 @@ impl Display for WorkspaceDiscoveryError {
                     .join(" -> ");
                 write!(f, "Package dependency cycle detected: {cycle}")
             }
+            Self::UnknownBuiltinPackage { name } => {
+                write!(f, "Unknown builtin package {name}")
+            }
+            Self::DirectDependencyOnBuiltin { package } => {
+                write!(f, "Cannot directly depend on builtin package {package}")
+            }
+            Self::BuiltinDependencyOnNonBuiltin { package } => {
+                write!(
+                    f,
+                    "Builtin package cannot depend on non-builtin package {package}"
+                )
+            }
         }
     }
 }
@@ -759,7 +786,10 @@ impl WorkspaceDiscoveryError {
             | Self::RemoteDependencyMaterializationError { .. }
             | Self::DependencyAliasCollision { .. }
             | Self::DuplicatePackageId { .. }
-            | Self::PackageCycle { .. } => (Span::None, vec![]),
+            | Self::PackageCycle { .. }
+            | Self::UnknownBuiltinPackage { .. }
+            | Self::DirectDependencyOnBuiltin { .. }
+            | Self::BuiltinDependencyOnNonBuiltin { .. } => (Span::None, vec![]),
         }
     }
 
@@ -778,7 +808,10 @@ impl WorkspaceDiscoveryError {
             | Self::RemoteDependencyMaterializationError { .. }
             | Self::DependencyAliasCollision { .. }
             | Self::DuplicatePackageId { .. }
-            | Self::PackageCycle { .. } => message_report(self.to_string()),
+            | Self::PackageCycle { .. }
+            | Self::UnknownBuiltinPackage { .. }
+            | Self::DirectDependencyOnBuiltin { .. }
+            | Self::BuiltinDependencyOnNonBuiltin { .. } => message_report(self.to_string()),
         }
     }
 }
@@ -1484,7 +1517,7 @@ impl PackageGraph {
         let root_package = discovery.discover(
             layout,
             root_dir.clone(),
-            PackageId::from_local_path(&root_dir)?,
+            package_id_from_local_path(&root_dir)?,
         )?;
         Ok(discovery.finish(root_package))
     }
@@ -1529,17 +1562,15 @@ fn normalized_package_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-impl PackageId {
-    pub fn from_local_path(path: &Path) -> Result<Self, WorkspaceDiscoveryError> {
-        let canonical = canonicalize_path(path)?;
-        Ok(Self::Local(ArcStr::from(normalized_package_path(
-            &canonical,
-        ))))
-    }
+pub fn package_id_from_local_path(path: &Path) -> Result<PackageId, WorkspaceDiscoveryError> {
+    let canonical = canonicalize_path(path)?;
+    Ok(PackageId::Local(ArcStr::from(normalized_package_path(
+        &canonical,
+    ))))
+}
 
-    pub fn from_remote_source(source: &RemoteDependencySource) -> Self {
-        Self::Remote(ArcStr::from(source.as_str()))
-    }
+pub fn package_id_from_remote_source(source: &RemoteDependencySource) -> PackageId {
+    PackageId::Remote(ArcStr::from(source.as_str()))
 }
 
 fn normalized_path_key(path: &Path) -> String {
@@ -1553,6 +1584,7 @@ struct PackageGraphDiscovery<'a, H> {
     package_ids_by_root: BTreeMap<PathBuf, PackageId>,
     roots_by_package_id: BTreeMap<PackageId, PathBuf>,
     packages_by_root: BTreeMap<PathBuf, DiscoveredPackage>,
+    root_builtin: bool,
 }
 
 impl<'a, H: MissingRemotePackageHandler> PackageGraphDiscovery<'a, H> {
@@ -1564,6 +1596,7 @@ impl<'a, H: MissingRemotePackageHandler> PackageGraphDiscovery<'a, H> {
             package_ids_by_root: BTreeMap::new(),
             roots_by_package_id: BTreeMap::new(),
             packages_by_root: BTreeMap::new(),
+            root_builtin: false,
         }
     }
 
@@ -1605,9 +1638,30 @@ impl<'a, H: MissingRemotePackageHandler> PackageGraphDiscovery<'a, H> {
         &mut self,
         layout: PackageLayout,
         canonical_root: PathBuf,
-        package_id: PackageId,
+        mut package_id: PackageId,
     ) -> Result<PackageId, WorkspaceDiscoveryError> {
         let manifest = PackageManifest::read_from(&layout.manifest_path)?;
+
+        if manifest.builtin {
+            let builtin = BuiltinPackage::from_str(&manifest.name).ok_or_else(|| {
+                WorkspaceDiscoveryError::UnknownBuiltinPackage {
+                    name: manifest.name.clone(),
+                }
+            })?;
+            if self.visiting.len() == 1 {
+                // this is the root package
+                self.root_builtin = true
+            } else if !self.root_builtin {
+                return Err(WorkspaceDiscoveryError::DirectDependencyOnBuiltin {
+                    package: package_id,
+                });
+            }
+            package_id = PackageId::Builtin(builtin);
+        } else if self.root_builtin {
+            return Err(WorkspaceDiscoveryError::BuiltinDependencyOnNonBuiltin {
+                package: package_id,
+            });
+        }
 
         if let Some(first_root) = self.roots_by_package_id.get(&package_id) {
             if first_root != &canonical_root {
@@ -1637,7 +1691,7 @@ impl<'a, H: MissingRemotePackageHandler> PackageGraphDiscovery<'a, H> {
                     let dependency_id = self.discover(
                         dependency_layout,
                         dependency_root.clone(),
-                        PackageId::from_local_path(&dependency_root)?,
+                        package_id_from_local_path(&dependency_root)?,
                     )?;
                     dependencies.insert(alias.clone(), dependency_id);
                 }
@@ -1677,7 +1731,7 @@ impl<'a, H: MissingRemotePackageHandler> PackageGraphDiscovery<'a, H> {
                     let dependency_id = self.discover(
                         dependency_layout,
                         dependency_root,
-                        PackageId::from_remote_source(dependency),
+                        package_id_from_remote_source(dependency),
                     )?;
                     dependencies.insert(alias.clone(), dependency_id);
                 }
@@ -1961,17 +2015,17 @@ fn universalize_module_path(
             })
         }
         Resolved::BuiltinOperator(BuiltinOperatorModule::Data) => Ok(Universal {
-            package: PackageId::Special(arcstr::literal!("core")),
+            package: PackageId::Builtin(BuiltinPackage::Core),
             directories: vec![],
             module: String::from("Data"),
         }),
         Resolved::BuiltinOperator(BuiltinOperatorModule::Number) => Ok(Universal {
-            package: PackageId::Special(arcstr::literal!("core")),
+            package: PackageId::Builtin(BuiltinPackage::Core),
             directories: vec![],
             module: String::from("Number"),
         }),
         Resolved::BuiltinOperator(BuiltinOperatorModule::String) => Ok(Universal {
-            package: PackageId::Special(arcstr::literal!("core")),
+            package: PackageId::Builtin(BuiltinPackage::Core),
             directories: vec![],
             module: String::from("String"),
         }),
@@ -2208,17 +2262,17 @@ fn resolve_name_to_universal(
             }
         }
         Resolved::BuiltinOperator(BuiltinOperatorModule::Data) => Universal {
-            package: PackageId::Special(arcstr::literal!("core")),
+            package: PackageId::Builtin(BuiltinPackage::Core),
             directories: vec![],
             module: String::from("Data"),
         },
         Resolved::BuiltinOperator(BuiltinOperatorModule::Number) => Universal {
-            package: PackageId::Special(arcstr::literal!("core")),
+            package: PackageId::Builtin(BuiltinPackage::Core),
             directories: vec![],
             module: String::from("Number"),
         },
         Resolved::BuiltinOperator(BuiltinOperatorModule::String) => Universal {
-            package: PackageId::Special(arcstr::literal!("core")),
+            package: PackageId::Builtin(BuiltinPackage::Core),
             directories: vec![],
             module: String::from("String"),
         },
@@ -3153,13 +3207,13 @@ def Main = !
         let canonical_root = canonicalize_path(&root).unwrap();
         assert_eq!(
             workspace_packages.root_package,
-            PackageId::from_local_path(&canonical_root).unwrap()
+            package_id_from_local_path(&canonical_root).unwrap()
         );
 
         let workspace = assemble_workspace(workspace_packages).unwrap();
         assert_eq!(
             workspace.root_package(),
-            &PackageId::from_local_path(&canonical_root).unwrap()
+            &package_id_from_local_path(&canonical_root).unwrap()
         );
         assert_eq!(
             workspace
@@ -3668,7 +3722,7 @@ url = \"github.com/example/root\"
         let canonical_root = canonicalize_path(&root).unwrap();
         assert_eq!(
             workspace_packages.root_package,
-            PackageId::from_local_path(&canonical_root).unwrap()
+            package_id_from_local_path(&canonical_root).unwrap()
         );
     }
 

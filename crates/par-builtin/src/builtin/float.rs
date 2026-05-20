@@ -12,7 +12,7 @@ use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
 inventory::submit!(ExternalTypeDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Float"
@@ -22,7 +22,7 @@ inventory::submit!(ExternalTypeDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "NaN_"
@@ -32,7 +32,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Inf_"
@@ -42,7 +42,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "NegInf_"
@@ -52,7 +52,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Pi_"
@@ -62,7 +62,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "E_"
@@ -72,7 +72,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "IsNaN"
@@ -82,7 +82,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "IsFinite"
@@ -92,7 +92,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "IsInfinite"
@@ -102,7 +102,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "FromInt"
@@ -112,7 +112,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "ToInt"
@@ -122,7 +122,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "FromString"
@@ -132,7 +132,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Neg"
@@ -142,7 +142,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Abs"
@@ -152,7 +152,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Floor"
@@ -162,7 +162,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Ceil"
@@ -172,7 +172,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Round"
@@ -182,7 +182,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Pow"
@@ -192,7 +192,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Min"
@@ -202,7 +202,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Max"
@@ -212,7 +212,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Clamp"
@@ -222,7 +222,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Equals"
@@ -232,7 +232,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Sqrt"
@@ -242,7 +242,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Exp"
@@ -252,7 +252,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Ln"
@@ -262,7 +262,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Sin"
@@ -272,7 +272,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Cos"
@@ -282,7 +282,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Tan"
@@ -292,7 +292,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Float",
         name: "Atan2"

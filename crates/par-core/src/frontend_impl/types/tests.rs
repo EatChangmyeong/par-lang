@@ -1,13 +1,14 @@
 #[cfg(test)]
 mod tests {
     use crate::frontend_impl::language::{
-        GlobalName, LocalName, PackageId, TypeConstraint, TypeParameter, Universal,
+        GlobalName, LocalName, TypeConstraint, TypeParameter, Universal,
     };
     use crate::frontend_impl::types::implicit::infer_holes;
     use crate::frontend_impl::types::{GlobalNameWriter, Type, TypeDefs, TypeError};
     use crate::location::Span;
     use crate::workspace::render_type_in_scope;
     use arcstr::{ArcStr, literal};
+    use par_runtime::pkgid::PackageId;
     use std::fmt::{self, Write};
 
     struct TestNameWriter;

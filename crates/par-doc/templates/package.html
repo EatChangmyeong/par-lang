@@ -7,8 +7,8 @@
       <span class="page-title-name">{{ package.name }}</span>
     </h1>
     <p class="page-subtitle">
-      {% if package.has_identity_link %}
-        <a class="page-subtitle-link" href="{{ package.identity_href }}" target="_blank" rel="noreferrer noopener">{{ package.identity }}</a>
+      {% if let Some(href) = package.identity_href %}
+        <a class="page-subtitle-link" href="{{ href }}" target="_blank" rel="noreferrer noopener">{{ package.identity }}</a>
       {% else %}
         {{ package.identity }}
       {% endif %}

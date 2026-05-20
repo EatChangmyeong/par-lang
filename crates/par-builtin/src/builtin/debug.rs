@@ -9,7 +9,7 @@ async fn debug_log(mut handle: Handle) {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Debug",
         name: "Log"

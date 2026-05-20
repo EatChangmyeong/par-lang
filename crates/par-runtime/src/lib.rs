@@ -3,6 +3,7 @@ mod executor;
 pub mod fan_behavior;
 pub mod flat;
 pub mod linker;
+pub mod pkgid;
 pub mod poll;
 pub mod primitive;
 pub mod readback;

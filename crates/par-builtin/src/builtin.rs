@@ -26,40 +26,41 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use std::env;
 use std::path::PathBuf;
 
-use arcstr::literal;
-use par_core::frontend::language::PackageId;
 use par_core::frontend::{TypeDef, get_external_type_defs};
 use par_core::source::FileName;
 use par_core::workspace::{
-    ExternalModule, LoadedPackageFile, ModulePath, WorkspacePackage, parse_loaded_files,
+    ExternalModule, LoadedPackageFile, ModulePath, WorkspaceDiscoveryError, WorkspacePackage,
+    WorkspacePackages, parse_loaded_files,
 };
+use par_runtime::pkgid::{BuiltinPackage, PackageId};
 use par_runtime::registry::PackageRef;
 
-pub fn builtin_packages() -> Vec<WorkspacePackage> {
-    let mut packages = Vec::new();
+pub fn builtin_packages() -> impl Iterator<Item = WorkspacePackage> {
     // skip if NOSTD is set.
-    if env::var("NOSTD").ok().is_none() {
-        packages.push(core_package());
-
-        #[cfg(not(target_family = "wasm"))]
-        packages.push(basic_package());
-    }
-
-    packages
+    let enable_builtins = env::var("NOSTD").ok().is_none();
+    let packages = enable_builtins.then(|| {
+        [
+            core_package(),
+            #[cfg(not(target_family = "wasm"))]
+            basic_package(),
+        ]
+    });
+    packages.into_iter().flatten()
 }
 
 fn core_package() -> WorkspacePackage {
     let parsed = parse_builtin_sources("core", CORE_SOURCE_FILES);
-    let externals = load_external_type_defs("core");
-    WorkspacePackage::new(PackageId::Special(literal!("core")), parsed).with_externals(externals)
+    let externals = load_external_type_defs(BuiltinPackage::Core);
+    WorkspacePackage::new(PackageId::Builtin(BuiltinPackage::Core), parsed)
+        .with_externals(externals)
 }
 
 #[cfg(not(target_family = "wasm"))]
 fn basic_package() -> WorkspacePackage {
     let parsed = parse_builtin_sources("basic", BASIC_SOURCE_FILES);
-    let externals = load_external_type_defs("basic");
-    WorkspacePackage::new(PackageId::Special(literal!("basic")), parsed)
-        .with_dependency("core", PackageId::Special(literal!("core")))
+    let externals = load_external_type_defs(BuiltinPackage::Basic);
+    WorkspacePackage::new(PackageId::Builtin(BuiltinPackage::Basic), parsed)
+        .with_dependency("core", PackageId::Builtin(BuiltinPackage::Core))
         .with_externals(externals)
 }
 
@@ -196,9 +197,9 @@ fn parse_builtin_sources(
     parse_loaded_files(files).expect("embedded builtin package should parse")
 }
 
-fn load_external_type_defs(name: &str) -> BTreeMap<ModulePath, ExternalModule> {
+fn load_external_type_defs(name: BuiltinPackage) -> BTreeMap<ModulePath, ExternalModule> {
     let mut externals = BTreeMap::<ModulePath, ExternalModule>::new();
-    for type_def in get_external_type_defs(&PackageRef::Special(name)) {
+    for type_def in get_external_type_defs(PackageRef::Builtin(name)) {
         let module_path = ModulePath {
             directories: type_def.path.path.iter().map(|s| s.to_string()).collect(),
             module: type_def.path.module.into(),
@@ -223,4 +224,34 @@ fn load_external_type_defs(name: &str) -> BTreeMap<ModulePath, ExternalModule> {
         }
     }
     externals
+}
+
+pub fn inject_builtin_packages(
+    workspace_packages: &mut WorkspacePackages,
+) -> Result<(), WorkspaceDiscoveryError> {
+    for package in &mut workspace_packages.packages {
+        if let PackageId::Builtin(name) = package.id {
+            package.externals = load_external_type_defs(name);
+            continue;
+        }
+
+        for &builtin in BuiltinPackage::ALL {
+            match package.dependencies.entry(builtin.to_string()) {
+                Entry::Vacant(v) => {
+                    v.insert(PackageId::Builtin(builtin));
+                }
+                Entry::Occupied(_) => {
+                    return Err(WorkspaceDiscoveryError::DependencyAliasCollision {
+                        package: package.id.clone(),
+                        alias: builtin.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    if !matches!(workspace_packages.root_package, PackageId::Builtin(_)) {
+        workspace_packages.packages.extend(builtin_packages());
+    }
+    Ok(())
 }
