@@ -58,7 +58,7 @@ def YieldDownloadRequests = [listenUrl, rootPath] chan yield {
           ->String.ReadAll
           ->Try.FlatMap(box Url.FromString)
 
-        let destination = rootPath.append(url.path->TrimStart("/"))
+        let destination = rootPath.append(url.path->Bytes.TrimLeft(.bytes "/"))
         yield.item((sourceUrl, destination)!)
         respond((200, *()) Bytes.EmptyReader)
         next.loop
@@ -124,7 +124,7 @@ dec ShowDownloadProgress : [List<Event>, Os.Path] !
 def ShowDownloadProgress = [events, rootPath] chan exit {
   let getName = box [path: Os.Path]
     path.absolute
-      ->TrimStart(rootPath.absolute)
+      ->Bytes.TrimLeft(.bytes rootPath.absolute)
       ->String.FromBytes
 
   catch e => {
@@ -240,13 +240,3 @@ def FanIn = <a>[lists] chan yield {
     }) lists.loop
   }).end!
 }
-
-dec TrimStart : [Bytes, Bytes] Bytes
-def TrimStart = [whole, start]
-  Bytes.Parse(whole).begin.case {
-    .empty! => whole,
-    .ready p => p.minMaxEnd(.bytes start, .repeat.one.any!)->Try.Ok.case {
-      .fail p => let ! = p.close->Try.Ok in whole,
-      .match(_, trimmed)! => trimmed,
-    },
-  }

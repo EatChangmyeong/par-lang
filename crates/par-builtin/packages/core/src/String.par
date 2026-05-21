@@ -109,6 +109,12 @@ export {
   // Unicode replacement character.
   dec FromBytes : [Bytes] String
 
+  // Converts a string to lowercase.
+  dec ToLower : [String] String
+
+  // Converts a string to uppercase.
+  dec ToUpper : [String] String
+
   // Creates a new string `Builder`.
   dec Builder : Builder
 
@@ -130,6 +136,15 @@ export {
 
   // Splits a parser's remaining input on a string pattern.
   dec SplitByPattern : <e>[Parser<e>] [Pattern] Stream<e, String>
+
+  // Trims whitespace from both ends of a string.
+  dec Trim : [String] String
+
+  // Trims the given pattern once from the start of a string.
+  dec TrimLeft : [String, Pattern] String
+
+  // Trims the given pattern once from the end of a string.
+  dec TrimRight : [String, Pattern] String
 
   // Joins a list of strings with a separator between each element.
   //
@@ -153,6 +168,10 @@ export {
 def Quote = external
 
 def FromBytes = external
+
+def ToLower = external
+
+def ToUpper = external
 
 def Builder = external
 
@@ -189,6 +208,27 @@ def SplitByPattern = <e>[parser] [separator] parser.begin.case {
         .get => (chunk) parser.loop,
       },
     },
+  },
+}
+
+def Trim = [string]
+  string
+    ->TrimLeft(.repeat.one.whitespace!)
+    ->TrimRight(.repeat.one.whitespace!)
+
+def TrimLeft = [string, pattern] Parse(string).begin.case {
+  .empty! => string,
+  .ready parser => parser.minMax(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in string,
+    .match(_, _) parser => parser->Remainder->Try.Ok,
+  },
+}
+
+def TrimRight = [string, pattern] Parse(string).begin.case {
+  .empty! => string,
+  .ready parser => parser.minMaxEnd(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in string,
+    .match(trimmed, _)! => trimmed,
   },
 }
 

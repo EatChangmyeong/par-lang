@@ -74,6 +74,26 @@ inventory::submit!(ExternalDef {
     f: |handle| Box::pin(string_from_bytes(handle)),
 });
 
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::CORE,
+        path: &[],
+        module: "String",
+        name: "ToLower"
+    },
+    f: |handle| Box::pin(string_to_lower(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::CORE,
+        path: &[],
+        module: "String",
+        name: "ToUpper"
+    },
+    f: |handle| Box::pin(string_to_upper(handle)),
+});
+
 async fn string_builder(mut handle: Handle) {
     let mut buf = String::new();
     loop {
@@ -108,6 +128,16 @@ async fn string_parser_from_reader(mut handle: Handle) {
 async fn string_from_bytes(mut handle: Handle) {
     let bytes = handle.receive().bytes().await;
     handle.provide_string(ParString::from_utf8_lossy(bytes))
+}
+
+async fn string_to_lower(mut handle: Handle) {
+    let string = handle.receive().string().await;
+    handle.provide_string(ParString::from(string.as_str().to_lowercase()));
+}
+
+async fn string_to_upper(mut handle: Handle) {
+    let string = handle.receive().string().await;
+    handle.provide_string(ParString::from(string.as_str().to_uppercase()));
 }
 
 #[derive(Debug, Clone)]
@@ -152,7 +182,7 @@ impl StringPattern {
             }
             "empty" => {
                 // .empty!
-                handle.break_();
+                handle.continue_();
                 Box::new(Self::Empty)
             }
             "min" => {

@@ -4,6 +4,7 @@ import {
   @core/Bool
   @core/BoxMap
   @core/Bytes
+  @core/Char
   @core/Float
   @core/Int
   @core/Json
@@ -175,6 +176,8 @@ def TestStreamSplitting : [Test] ! = [test] do {
 
   let remainder = String.Parse("remaining")->String.Remainder->Try.Ok
 
+  let bytesRemainder = Bytes.Parse("bytes")->Bytes.Remainder->Try.Ok
+
   let bytesParts = Bytes.Parse("a,b,c")
     ->Bytes.SplitBy(",")
     ->Stream.Map(box String.FromBytes)
@@ -186,7 +189,22 @@ def TestStreamSplitting : [Test] ! = [test] do {
     .assert("String.Lines accepts Windows line separators", windowsLines == {*("alpha", "beta", "gamma")})
     .assert("String.SplitBy splits by string separators", stringParts == {*("red", "green", "blue")})
     .assert("String.Remainder returns unparsed input", remainder == "remaining")
+    .assert("Bytes.Remainder returns unparsed input", String.FromBytes(bytesRemainder) == "bytes")
     .assert("Bytes.SplitBy splits byte streams", bytesParts == {*("a", "b", "c")})
+} in !
+
+def TestTextCasingAndTrimming : [Test] ! = [test] do {
+  test
+    .assert("Char.ToLower lowercases a character", Char.ToLower("A") == "a")
+    .assert("Char.ToUpper uppercases a character", Char.ToUpper("z") == "Z")
+    .assert("String.ToLower lowercases a string", String.ToLower("Hello WORLD") == "hello world")
+    .assert("String.ToUpper uppercases a string", String.ToUpper("Hello world") == "HELLO WORLD")
+    .assert("String.Trim trims surrounding whitespace", String.Trim(" \tHello\n") == "Hello")
+    .assert("String.TrimLeft trims one leading pattern", String.TrimLeft("::value::", .str "::") == "value::")
+    .assert("String.TrimLeft keeps strings without the pattern", String.TrimLeft("value::", .str "::") == "value::")
+    .assert("String.TrimRight trims one trailing pattern", String.TrimRight("::value::", .str "::") == "::value")
+    .assert("Bytes.TrimLeft trims one leading pattern", String.FromBytes(Bytes.TrimLeft("--data--", .bytes "--")) == "data--")
+    .assert("Bytes.TrimRight trims one trailing pattern", String.FromBytes(Bytes.TrimRight("--data--", .bytes "--")) == "--data")
 } in !
 
 def TestMapConstructors : [Test] ! = [test] do {

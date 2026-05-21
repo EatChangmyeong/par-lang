@@ -125,11 +125,20 @@ export {
   // The error type matches the reader's error type.
   dec ParseReader : <e>[Reader<e>] Parser<e>
 
+  // Consumes a parser and returns all remaining unparsed bytes.
+  dec Remainder : <e>[Parser<e>] Try<e, Bytes>
+
   // Splits a parser's remaining input on a byte separator.
   dec SplitBy : <e>[Parser<e>] [Bytes] Stream<e, Bytes>
 
   // Splits a parser's remaining input on a byte pattern.
   dec SplitByPattern : <e>[Parser<e>] [Pattern] Stream<e, Bytes>
+
+  // Trims the given pattern once from the start of a byte sequence.
+  dec TrimLeft : [Bytes, Pattern] Bytes
+
+  // Trims the given pattern once from the end of a byte sequence.
+  dec TrimRight : [Bytes, Pattern] Bytes
 
   // Creates a `Reader` from a function that writes to a `Writer`.
   // The function receives a `Writer<!>` whose writes fail with `!` if the
@@ -163,6 +172,11 @@ def EmptyReader = external
 
 def ParseReader = external
 
+def Remainder = <e>[parser] parser.case {
+  .empty! => .ok "",
+  .ready parser => parser.remainder,
+}
+
 def SplitBy = <e>[parser] [separator] parser->SplitByPattern(.bytes separator)
 
 def SplitByPattern = <e>[parser] [separator] parser.begin.case {
@@ -170,7 +184,7 @@ def SplitByPattern = <e>[parser] [separator] parser.begin.case {
   .ready parser => parser.minMax(.repeat.one.any!, separator).case {
     .err e => .end.err e,
     .ok result => result.case {
-      .fail parser => parser.remainder.case {
+      .fail parser => Remainder(.ready parser).case {
         .err e => .end.err e,
         .ok chunk => .item case {
           .cancel => .ok!,
@@ -188,9 +202,22 @@ def SplitByPattern = <e>[parser] [separator] parser.begin.case {
   },
 }
 
+def TrimLeft = [bytes, pattern] Parse(bytes).begin.case {
+  .empty! => bytes,
+  .ready parser => parser.minMax(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in bytes,
+    .match(_, _) parser => parser->Remainder->Try.Ok,
+  },
+}
+
+def TrimRight = [bytes, pattern] Parse(bytes).begin.case {
+  .empty! => bytes,
+  .ready parser => parser.minMaxEnd(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in bytes,
+    .match(trimmed, _)! => trimmed,
+  },
+}
+
 def PipeReader = external
 
-def ReadAll = <e>[reader] ParseReader(reader).case {
-  .empty! => .ok "",
-  .ready p => p.remainder,
-}
+def ReadAll = <e>[reader] ParseReader(reader)->Remainder

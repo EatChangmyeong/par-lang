@@ -36,9 +36,39 @@ inventory::submit!(ExternalDef {
     f: |handle| Box::pin(char_is(handle)),
 });
 
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::CORE,
+        path: &[],
+        module: "Char",
+        name: "ToLower"
+    },
+    f: |handle| Box::pin(char_to_lower(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::CORE,
+        path: &[],
+        module: "Char",
+        name: "ToUpper"
+    },
+    f: |handle| Box::pin(char_to_upper(handle)),
+});
+
 async fn char_code(mut handle: Handle) {
     let c = handle.receive().char().await;
     handle.provide_nat(BigUint::from(c as u32));
+}
+
+async fn char_to_lower(mut handle: Handle) {
+    let ch = handle.receive().char().await;
+    handle.provide_char(ch.to_lowercase().next().unwrap_or(ch));
+}
+
+async fn char_to_upper(mut handle: Handle) {
+    let ch = handle.receive().char().await;
+    handle.provide_char(ch.to_uppercase().next().unwrap_or(ch));
 }
 
 async fn char_is(mut handle: Handle) {
@@ -66,16 +96,34 @@ pub(super) enum CharClass {
 impl CharClass {
     pub(super) async fn readback(mut handle: Handle) -> Self {
         match handle.case().await.as_str() {
-            "any" => Self::Any,
+            "any" => {
+                handle.continue_();
+                Self::Any
+            }
             "ascii" => match handle.case().await.as_str() {
-                "alpha" => Self::AsciiAlpha,
-                "alphanum" => Self::AsciiAlphanum,
-                "any" => Self::AsciiAny,
-                "digit" => Self::AsciiDigit,
+                "alpha" => {
+                    handle.continue_();
+                    Self::AsciiAlpha
+                }
+                "alphanum" => {
+                    handle.continue_();
+                    Self::AsciiAlphanum
+                }
+                "any" => {
+                    handle.continue_();
+                    Self::AsciiAny
+                }
+                "digit" => {
+                    handle.continue_();
+                    Self::AsciiDigit
+                }
                 _ => unreachable!(),
             },
             "char" => Self::Char(handle.char().await),
-            "whitespace" => Self::Whitespace,
+            "whitespace" => {
+                handle.continue_();
+                Self::Whitespace
+            }
             _ => unreachable!(),
         }
     }

@@ -62,7 +62,10 @@ pub(super) enum ByteClass {
 impl ByteClass {
     pub(super) async fn readback(mut handle: Handle) -> Self {
         match handle.case().await.as_str() {
-            "any" => Self::Any,
+            "any" => {
+                handle.continue_();
+                Self::Any
+            }
             "byte" => Self::Byte(handle.byte().await),
             "range" => {
                 let min = handle.receive().byte().await;

@@ -420,7 +420,7 @@ impl BytesPattern {
             }
             "empty" => {
                 // .empty!
-                handle.break_();
+                handle.continue_();
                 Box::new(Self::Empty)
             }
             "min" => {

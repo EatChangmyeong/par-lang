@@ -31,10 +31,20 @@ export {
   // Returns the Unicode code point of a character as a natural number.
   dec Code : [Char] Nat
 
+  // Converts a character to lowercase.
+  dec ToLower : [Char] Char
+
+  // Converts a character to uppercase.
+  dec ToUpper : [Char] Char
+
   // Tests whether a character matches a class.
   dec Is : [Char, Class] Bool
 }
 
 def Code = external
+
+def ToLower = external
+
+def ToUpper = external
 
 def Is = external
