@@ -136,7 +136,7 @@ export {
   // ```
   dec Concat : [List<String>] String
 
-  // Reads all bytes from a `Reader` and decodes them into a `String,
+  // Reads all bytes from a `Reader` and decodes them into a `String`,
   // replacing invalid sequences with the Unicode replacement character.
   dec ReadAll : <e>[Bytes.Reader<e>] Result<e, String>
 }
