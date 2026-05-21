@@ -67,27 +67,6 @@ pub(crate) fn substitute_holes<S: Clone + Eq + std::hash::Hash>(
     Ok((holed_pattern, holes_map))
 }
 
-pub(crate) fn infer_holes<S: Clone + Eq + std::hash::Hash>(
-    span: &Span,
-    typ: &Type<S>,
-    pattern: &Type<S>,
-    names: &[TypeParameter],
-    type_defs: &TypeDefs<S>,
-) -> Result<BTreeMap<LocalName, Type<S>>, TypeError<S>> {
-    let (holed_pattern, holes_map) = substitute_holes(pattern, names)?;
-
-    if !typ.require_assignable_to(&holed_pattern, type_defs)? {
-        return Err(TypeError::CannotAssignFromTo(
-            span.clone(),
-            typ.clone(),
-            pattern.clone(),
-        ));
-    }
-
-    let res = resolve_holes(span, names, type_defs, holes_map)?;
-    Ok(res)
-}
-
 pub(crate) fn resolve_holes<S: Clone + Eq + std::hash::Hash>(
     span: &Span,
     names: &[TypeParameter],
