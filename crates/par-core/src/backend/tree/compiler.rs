@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use crate::frontend::language::PackageId;
 use crate::frontend_impl::process::VariableUsage;
 use crate::frontend_impl::program::DefinitionBody;
 use crate::frontend_impl::types::core::get_primitive_type;
@@ -24,7 +23,7 @@ use crate::{
 use arcstr::ArcStr;
 use indexmap::{IndexMap, IndexSet};
 use par_runtime::fan_behavior::FanBehavior;
-use par_runtime::linker::{PackageID, Unlinked};
+use par_runtime::linker::Unlinked;
 use par_runtime::poll::POLL_TOKEN;
 use std::hash::Hash;
 
@@ -259,7 +258,7 @@ struct PollInfo {
 }
 
 fn poll_token_tree() -> Tree<Unlinked> {
-    Tree::External(POLL_TOKEN.clone().into())
+    Tree::External(POLL_TOKEN.into())
 }
 
 impl Tree<Unlinked> {
@@ -325,11 +324,7 @@ impl Compiler {
                 DefinitionBody::Par(expr) => expr,
                 DefinitionBody::External(_) => {
                     let def_ref = Unlinked {
-                        package: match &name.module.package {
-                            PackageId::Special(name) => PackageID::Special(name.to_string()),
-                            PackageId::Local(name) => PackageID::Local(name.to_string()),
-                            PackageId::Remote(name) => PackageID::Remote(name.to_string()),
-                        },
+                        package: name.module.package.clone(),
                         path: name.module.directories.clone(),
                         module: name.module.module.clone(),
                         name: name.primary.clone(),

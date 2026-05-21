@@ -29,9 +29,8 @@ async fn console_open(mut handle: Handle) {
                 handle.send().concurrently(|mut handle| async move {
                     match result {
                         Ok(n) if n > 0 => {
-                            let string = ParString::copy_from_slice(
-                                buf.trim_end_matches(&['\n', '\r']).as_bytes(),
-                            );
+                            let string =
+                                ParString::copy_from_slice(buf.trim_end_matches(&['\n', '\r']));
                             handle.signal(literal!("ok"));
                             handle.provide_string(string);
                         }
@@ -49,7 +48,7 @@ async fn console_open(mut handle: Handle) {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("basic"),
+        package: PackageRef::BASIC,
         path: &[],
         module: "Console",
         name: "Open"

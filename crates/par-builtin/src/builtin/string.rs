@@ -16,7 +16,7 @@ use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
 inventory::submit!(ExternalTypeDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "String",
         name: "String"
@@ -26,7 +26,7 @@ inventory::submit!(ExternalTypeDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "String",
         name: "Builder"
@@ -36,7 +36,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "String",
         name: "Parser"
@@ -46,7 +46,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "String",
         name: "ParserFromReader"
@@ -56,7 +56,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "String",
         name: "Quote"
@@ -66,7 +66,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "String",
         name: "FromBytes"
@@ -107,9 +107,7 @@ async fn string_parser_from_reader(mut handle: Handle) {
 
 async fn string_from_bytes(mut handle: Handle) {
     let bytes = handle.receive().bytes().await;
-    handle.provide_string(ParString::copy_from_slice(
-        String::from_utf8_lossy(&bytes).as_bytes(),
-    ));
+    handle.provide_string(ParString::from_utf8_lossy(bytes))
 }
 
 #[derive(Debug, Clone)]

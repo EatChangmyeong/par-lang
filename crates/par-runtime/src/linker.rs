@@ -2,6 +2,7 @@ use crate::flat::arena::{Arena, Index};
 use crate::flat::runtime::{
     ExternalFn, Global, GlobalCont, GlobalValue, Package, PackageBody, PackagePtr,
 };
+use crate::pkgid::PackageId;
 use crate::registry::{DefinitionRef, PackageRef, get_external_fn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -11,16 +12,9 @@ use std::sync::{Arc, OnceLock};
 
 pub type Linked = ExternalFn;
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PackageID {
-    Special(String),
-    Local(String),
-    Remote(String),
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Unlinked {
-    pub package: PackageID,
+    pub package: PackageId,
     pub path: Vec<String>,
     pub module: String,
     pub name: String,
@@ -31,12 +25,13 @@ pub struct LinkError {
     pub missing: Unlinked,
 }
 
-impl<'a> From<PackageRef<'a>> for PackageID {
+impl<'a> From<PackageRef<'a>> for PackageId {
     fn from(package: PackageRef) -> Self {
         match package {
-            PackageRef::Special(name) => PackageID::Special(name.to_string()),
-            PackageRef::Local(name) => PackageID::Local(name.to_string()),
-            PackageRef::Remote(name) => PackageID::Remote(name.to_string()),
+            PackageRef::Builtin(name) => PackageId::Builtin(name),
+            PackageRef::Special(name) => PackageId::Special(name.into()),
+            PackageRef::Local(name) => PackageId::Local(name.into()),
+            PackageRef::Remote(name) => PackageId::Remote(name.into()),
         }
     }
 }
@@ -52,21 +47,8 @@ impl<'a> From<DefinitionRef<'a>> for Unlinked {
     }
 }
 
-impl Display for PackageID {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Special(name) | Self::Local(name) | Self::Remote(name) => write!(f, "@{name}"),
-        }
-    }
-}
-
 impl Display for Unlinked {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let package_prefix = match &self.package {
-            PackageID::Special(name) | PackageID::Local(name) | PackageID::Remote(name) => {
-                format!("@{name}/")
-            }
-        };
         let path_prefix = if self.path.is_empty() {
             String::new()
         } else {
@@ -74,8 +56,8 @@ impl Display for Unlinked {
         };
         write!(
             f,
-            "{}{}{}.{}",
-            package_prefix, path_prefix, self.module, self.name
+            "{}/{}{}.{}",
+            self.package, path_prefix, self.module, self.name
         )
     }
 }

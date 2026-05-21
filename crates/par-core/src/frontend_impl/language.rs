@@ -17,6 +17,7 @@ use crate::{
     location::{Span, Spanning},
 };
 use arcstr::{ArcStr, literal};
+use par_runtime::pkgid::PackageId;
 use par_runtime::primitive::{ParString, Primitive};
 
 #[derive(Clone, Debug)]
@@ -141,13 +142,6 @@ pub enum Resolved {
         module: String,
     },
     BuiltinOperator(BuiltinOperatorModule),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum PackageId {
-    Special(ArcStr),
-    Local(ArcStr),
-    Remote(ArcStr),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -674,11 +668,10 @@ impl Display for Unresolved {
 
 impl Display for Universal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.package {
-            PackageId::Special(name) => write!(f, "@{name}")?,
-            PackageId::Local(name) | PackageId::Remote(name) => {
-                write!(f, "\"{name}\"")?;
-            }
+        if self.package.is_regular() {
+            write!(f, "\"{}\"", self.package.name())?;
+        } else {
+            write!(f, "@{}", self.package.name())?;
         }
 
         write!(f, "/")?;
@@ -686,16 +679,6 @@ impl Display for Universal {
             write!(f, "{}", self.module)
         } else {
             write!(f, "{}/{}", self.directories.join("/"), self.module)
-        }
-    }
-}
-
-impl Display for PackageId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PackageId::Special(name) | PackageId::Local(name) | PackageId::Remote(name) => {
-                write!(f, "@{name}")
-            }
         }
     }
 }
@@ -1102,7 +1085,7 @@ impl Context {
                 TemplatePart::Literal(value) => {
                     items.push(Expression::Primitive(
                         Span::None,
-                        Primitive::String(ParString::copy_from_slice(value.as_bytes())),
+                        Primitive::String(ParString::from_owner(value.clone())),
                     ));
                 }
                 TemplatePart::StringExpr(expr) => {
@@ -1121,10 +1104,7 @@ impl Context {
         }
 
         match items.as_slice() {
-            [] => Expression::Primitive(
-                Span::None,
-                Primitive::String(ParString::copy_from_slice(b"")),
-            ),
+            [] => Expression::Primitive(Span::None, Primitive::String(ParString::default())),
             [only] if !has_interpolation => only.clone(),
             _ => Self::apply_expression(
                 &Span::None,

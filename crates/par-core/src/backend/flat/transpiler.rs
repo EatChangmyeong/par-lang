@@ -16,10 +16,10 @@ use par_runtime::flat::runtime::{
     ExternalArc, GlobalCont, GlobalValue, Package, PackageBody, PackagePtr,
 };
 
-use crate::frontend::language::PackageId;
 use crate::runtime_impl::tree::Net;
 use par_runtime::flat::runtime::Global;
 use par_runtime::linker::{Artifact, LinkError, Linked, Unlinked, link_arena, link_package_ptr};
+use par_runtime::pkgid::PackageId;
 
 #[derive(Default)]
 pub(crate) struct NetTranspiler {

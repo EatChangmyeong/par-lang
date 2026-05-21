@@ -1,2 +1,6 @@
 [package]
 name = "basic"
+__builtin = true
+
+[dependencies]
+core = "../core"

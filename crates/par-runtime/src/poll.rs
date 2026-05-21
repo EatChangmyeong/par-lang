@@ -3,7 +3,7 @@ use crate::registry::{DefinitionRef, ExternalDef};
 use arcstr::ArcStr;
 use std::pin::Pin;
 
-pub static POLL_TOKEN: DefinitionRef = DefinitionRef {
+pub const POLL_TOKEN: DefinitionRef = DefinitionRef {
     package: Special("#internal"),
     path: &[],
     module: "",
@@ -83,11 +83,6 @@ async fn poll_token_server(mut handle: crate::readback::Handle) {
 }
 
 inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: Special("#internal"),
-        path: &[],
-        module: "",
-        name: "#poll_token",
-    },
+    path: POLL_TOKEN,
     f: poll_token,
 });

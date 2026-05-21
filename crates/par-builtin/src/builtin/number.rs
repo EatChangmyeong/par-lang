@@ -6,7 +6,7 @@ use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Number",
         name: "Zero_"
@@ -16,7 +16,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Number",
         name: "Add"
@@ -26,7 +26,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Number",
         name: "Sub"
@@ -36,7 +36,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Number",
         name: "Mul"
@@ -46,7 +46,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Number",
         name: "Div"
@@ -56,7 +56,7 @@ inventory::submit!(ExternalDef {
 
 inventory::submit!(ExternalDef {
     path: DefinitionRef {
-        package: PackageRef::Special("core"),
+        package: PackageRef::CORE,
         path: &[],
         module: "Number",
         name: "Neg"

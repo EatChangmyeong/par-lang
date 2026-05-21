@@ -271,6 +271,9 @@ name = "arcstr"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03918c3dbd7701a85c6b9887732e2921175f26c350b4563841d0958c21d57e6d"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "arrayref"
@@ -761,6 +764,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bytes-utils"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dafe3a8757b027e2be6e4e5601ed563c55989fcf1546e933c66c8eb3a058d35"
+dependencies = [
+ "bytes",
+ "either",
+ "serde",
+]
+
+[[package]]
 name = "calloop"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1218,6 +1232,12 @@ dependencies = [
  "web-sys",
  "winit",
 ]
+
+[[package]]
+name = "either"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "emath"
@@ -2260,7 +2280,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -3087,6 +3107,7 @@ dependencies = [
  "miette",
  "par-builtin",
  "par-core",
+ "par-runtime",
  "pathdiff",
  "percent-encoding",
  "pulldown-cmark",
@@ -3147,6 +3168,7 @@ dependencies = [
  "arcstr",
  "atomicbox",
  "bytes",
+ "bytes-utils",
  "futures",
  "inventory",
  "num-bigint",
