@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::frontend_impl::language::{
-        GlobalName, LocalName, TypeParameter, Universal,
-    };
+    use crate::frontend_impl::language::{GlobalName, LocalName, TypeParameter, Universal};
     use crate::frontend_impl::types::{GlobalNameWriter, Type, TypeDefs};
     use crate::location::Span;
     use crate::workspace::render_type_in_scope;

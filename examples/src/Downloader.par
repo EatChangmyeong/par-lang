@@ -95,17 +95,17 @@ def DownloadFile = [(sourceUrl, dest)!] chan yield {
   yield.item((dest) .started totalSize)
 
   let bytesSinceLastEvent = 0
-  let timeOfLastEvent = Time.Now(!)
+  let timeOfLastEvent = Time.Now
 
   body.begin.read.try@clearFile.case {
     .chunk(bytes) => {
       file.write(bytes).try@clearResp
 
       bytesSinceLastEvent += Bytes.Length(bytes)
-      if timeOfLastEvent + 100 <= Time.Now(!) => {
+      if timeOfLastEvent + 100 <= Time.Now => {
         yield.item((dest) .progressed bytesSinceLastEvent)
         let bytesSinceLastEvent = 0
-        let timeOfLastEvent = Time.Now(!)
+        let timeOfLastEvent = Time.Now
       }
 
       body.loop
@@ -154,7 +154,7 @@ def ShowDownloadProgress = [events, rootPath] chan exit {
 
         .finished! => {
           tracker.file(name).ended[startTime, downloadedSize]
-          let duration = Time.Now(!) - startTime
+          let duration = Time.Now - startTime
           let speed = downloadedSize * 1000 / duration
           stdout.write(String.Concat(*(
             `\nFinished downloading ${name}\n`,
@@ -204,7 +204,7 @@ def NewProgressTracker: ProgressTracker = do {
   .file(name) => do {
     filesInProgress.entry(name)[entry]
     if not entry is .some(startTime, expected, downloaded)! => {
-      let startTime = Time.Now(!)
+      let startTime = Time.Now
       let expected = 0
       let downloaded = 0
     }
