@@ -2,7 +2,7 @@ module SourceFanIn
 
 import {
   @core/List
-  @core/Result
+  @core/Try
   @core/String
 }
 
@@ -10,9 +10,9 @@ dec PlayFanIn : [List<Source<!, String>>] Source<(!) List<!>, String>
 def PlayFanIn = [sources] SourceFanIn(sources)
 
 type Source<e, a> = recursive choice {
-  .close => Result<e, !>,
+  .close => Try<e, !>,
   .next => either {
-    .end Result<e, !>,
+    .end Try<e, !>,
     .item(a) self,
   }
 }
@@ -21,9 +21,9 @@ type SourceFan<e, a> = recursive either {
   .end!,
   .split(self) self,
   .client choice {
-    .close => Result<e, !>,
+    .close => Try<e, !>,
     .next => either {
-      .end Result<e, !>,
+      .end Try<e, !>,
       .item(a) self,
     }
   }
@@ -47,7 +47,7 @@ def SourceFanIn = <e, a>[sources]
 
       .client session => case {
         .close =>
-          let state: Result<(e) List.Builder<e>, !> = .ok! in
+          let state: Try<(e) List.Builder<e>, !> = .ok! in
           repoll(type SourceFan<e, a> in .client session) {
             fan => fan.case {
               .end! => submit(),
@@ -68,7 +68,7 @@ def SourceFanIn = <e, a>[sources]
 
         .next => session.next.case {
           .end result => 
-            let state: Result<(e) List.Builder<e>, !> = result.case {
+            let state: Try<(e) List.Builder<e>, !> = result.case {
               .ok! => .ok!,
               .err e => .err(e) List.Builder(type e),
             } in

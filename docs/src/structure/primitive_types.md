@@ -277,7 +277,7 @@ def Hello = String.Builder
   .build
 ```
 
-They can also be parsed through `String.Parser`. The parser is a larger tool, useful when you want
+They can also be parsed through `String.Parse`. The parser is a larger tool, useful when you want
 to read characters or match patterns:
 
 ```par
@@ -285,7 +285,7 @@ module Main
 
 import @core/String
 
-def ParserFromText = String.Parser("abc")
+def ParserFromText = String.Parse("abc")
 ```
 
 ### `@core/Char` and `@core/Byte`

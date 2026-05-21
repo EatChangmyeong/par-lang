@@ -2,21 +2,21 @@
 
 Programs that interact with the real world must handle errors gracefully. Files don't exist, networks disconnect, users type unexpected input. Most errors occur at I/O boundaries where your program meets external systems beyond its control.
 
-Par takes a structured approach to error handling that builds on its linear type system. At its core, Par uses explicit Result types — but adds lightweight syntax sugar that makes working with errors feel natural while keeping the underlying semantics transparent.
+Par takes a structured approach to error handling that builds on its linear type system. At its core, Par uses explicit Try types — but adds lightweight syntax sugar that makes working with errors feel natural while keeping the underlying semantics transparent.
 
 ## Why Par Needs Unique Error Handling
 
 Par's linear type system together with its concurrent evaluation creates a unique situation for error handling. Traditional approaches don't work for Par:
 
-**Exceptions** propagate across call stacks, unwinding through multiple function calls automatically. But Par's concurrent execution model has no call stacks! Instead, it has processes that communicate via channels. Any error must be explicitly passed via a channel, making something like a `Result` type necessary for error handling.
+**Exceptions** propagate across call stacks, unwinding through multiple function calls automatically. But Par's concurrent execution model has no call stacks! Instead, it has processes that communicate via channels. Any error must be explicitly passed via a channel, making something like a `Try` type necessary for error handling.
 
 **Rust's `?` operator** works by dropping remaining owned values when propagating errors. This implicit cleanup doesn't translate to Par's linear types, where each value must be consumed according to its specific type and context.
 
-Par needs error handling that makes cleanup fully explicit while remaining convenient to use. The `try`/`catch`/`throw` syntax sugar introduced here achieves this balance — borrowing familiar keywords from exception handling while operating very differently. Unlike traditional exceptions, Par's error handling is purely local syntax sugar over `Result` types, with no hidden control flow or stack unwinding.
+Par needs error handling that makes cleanup fully explicit while remaining convenient to use. The `try`/`catch`/`throw` syntax sugar introduced here achieves this balance — borrowing familiar keywords from exception handling while operating very differently. Unlike traditional exceptions, Par's error handling is purely local syntax sugar over `Try` types, with no hidden control flow or stack unwinding.
 
 ## Working with Files: Error Handling Without Sugar
 
-Let's start with a concrete example using Par's file system operations through the built-in `@basic/Os` module. The `Os.Path` type provides methods for working with the filesystem — creating files, reading directories, and so on. Most of these operations can fail, so they return `Result` values.
+Let's start with a concrete example using Par's file system operations through the built-in `@basic/Os` module. The `Os.Path` type provides methods for working with the filesystem — creating files, reading directories, and so on. Most of these operations can fail, so they return `Try` values.
 
 Here's what error handling looks like without any syntax sugar. We'll write a program that creates a log file and writes some entries to it:
 
@@ -183,7 +183,7 @@ Significantly shorter and more readable! The error handling is declared once and
 
 ## How `try`/`catch`/`throw` Work in Process Syntax
 
-Par's error handling sugar is built around small, local keywords that desugar to explicit `Result` handling. Let's understand how they work.
+Par's error handling sugar is built around small, local keywords that desugar to explicit `Try` handling. Let's understand how they work.
 
 ### The `catch` Statement
 
@@ -242,10 +242,10 @@ exit!
 
 ## The `try` Patterns and Commands
 
-The real power comes from `try`, which provides conditional error handling based on `Result` values:
+The real power comes from `try`, which provides conditional error handling based on `Try` values:
 
 ```par
-type Result<e, a> = either {
+type Try<e, a> = either {
   .err e,
   .ok a,
 }
@@ -255,7 +255,7 @@ type Result<e, a> = either {
 
 ### `.try` in Commands
 
-The `.try` postfix transforms verbose `Result` case analysis into clean linear code. Remember our original verbose version:
+The `.try` postfix transforms verbose `Try` case analysis into clean linear code. Remember our original verbose version:
 
 ```par
 writer.write("[INFO] First new log\n").case {
@@ -274,7 +274,7 @@ With `.try`, this becomes:
 writer.write("[INFO] First new log\n").try
 ```
 
-The `.try` postfix desugars any command or expression returning a `Result`:
+The `.try` postfix desugars any command or expression returning a `Try`:
 
 ```par
 variable.try
@@ -295,8 +295,8 @@ This works for more complex command chains too. Consider this type for polling d
 
 ```par
 type Poll<e, a> = iterative choice {
-  .close => Result<e, !>,
-  .next => Result<e, (a) self>,
+  .close => Try<e, !>,
+  .next => Try<e, (a) self>,
 }
 ```
 
@@ -366,11 +366,11 @@ And it works in receive commands, too. The `Console` type demonstrates this well
 type Console = iterative choice {
   .close => !,
   .print(String) => self,
-  .prompt(String) => (Result<!, String>) self,
+  .prompt(String) => (Try<!, String>) self,
 }
 ```
 
-The `.prompt` method returns a `Result` while keeping the console alive for more operations:
+The `.prompt` method returns a `Try` while keeping the console alive for more operations:
 
 ```par
 let console = Console.Open
@@ -398,7 +398,7 @@ The same concurrent evaluation restrictions apply, with an additional constraint
 This is invalid because `result.try` appears in a nested expression, which runs as a separate concurrent process:
 
 ```par
-// result : Result<String, Int>
+// result : Try<String, Int>
 catch e => .err e in
 .ok {result.try + 1}
 ```
@@ -550,14 +550,14 @@ module Main
 import {
   @basic/Os
   @core/Bytes
-  @core/Result
+  @core/Try
 }
 
-dec ReadAll : [Os.Path] Result<Os.Error, Bytes>
+dec ReadAll : [Os.Path] Try<Os.Error, Bytes>
 def ReadAll = [path] chan return {
   catch e => { return <> .err e }
   let try reader = Os.OpenFile(path)
-  let parser = Bytes.ParserFromReader(reader)
+  let parser = Bytes.ParseReader(reader)
   let try contents = parser.begin.case {
     .empty! => .ok <<>>,
     .some parser => parser.remainder,
@@ -566,13 +566,13 @@ def ReadAll = [path] chan return {
 }
 ```
 
-This function uses `Bytes.ParserFromReader` to convert the chunked `Bytes.Reader` from `path.openFile` into a parser, then reads the remaining contents from the non-empty parser branch. The `catch` block propagates any errors by linking them into an `.err` result, while success links the contents into an `.ok` result.
+This function uses `Bytes.ParseReader` to convert the chunked `Bytes.Reader` from `path.openFile` into a parser, then reads the remaining contents from the non-empty parser branch. The `catch` block propagates any errors by linking them into an `.err` result, while success links the contents into an `.ok` result.
 
 ## Providing defaults with `default`
 
 Sometimes you don’t want to branch on a missing optional value — you want to replace it with a fallback and keep going. The `default` sugar does exactly that for `Option` values.
 
-This is separate from `try`/`catch`: `try` unwraps `Result` values and propagates `.err`, while `default` unwraps `Option` values and replaces `.none!`. If you have a `Result` and want to ignore the error, convert it first with `Result.ToOption`.
+This is separate from `try`/`catch`: `try` unwraps `Try` values and propagates `.err`, while `default` unwraps `Option` values and replaces `.none!`. If you have a `Try` and want to ignore the error, convert it first with `Try.ToOption`.
 
 - Postfix form (expressions/commands):
 
@@ -583,8 +583,8 @@ This is separate from `try`/`catch`: `try` unwraps `Result` values and propagate
   let x = r1.default(0)   // x = 7
   let y = r2.default(0)   // y = 0
 
-  let result: Result<String, Int> = .err "not a number"
-  let option = Result.ToOption(result)
+  let result: Try<String, Int> = .err "not a number"
+  let option = Try.ToOption(result)
   let z = option.default(0)  // z = 0
   ```
 

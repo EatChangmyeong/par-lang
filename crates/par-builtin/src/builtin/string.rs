@@ -39,7 +39,7 @@ inventory::submit!(ExternalDef {
         package: PackageRef::CORE,
         path: &[],
         module: "String",
-        name: "Parser"
+        name: "Parse"
     },
     f: |handle| Box::pin(string_parser(handle)),
 });
@@ -49,7 +49,7 @@ inventory::submit!(ExternalDef {
         package: PackageRef::CORE,
         path: &[],
         module: "String",
-        name: "ParserFromReader"
+        name: "ParseReader"
     },
     f: |handle| Box::pin(string_parser_from_reader(handle)),
 });

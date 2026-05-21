@@ -67,10 +67,10 @@ Par’s “sum type” is [`either`](../types/either.md). If you just want to ma
 `either` without extra predicates, you can always use `.case`. `if` becomes
 useful once you want to match *and* filter while keeping bindings.
 
-Two common `either` types you’ll see everywhere are `Result` and `Option`:
+Two common `either` types you’ll see everywhere are `Try` and `Option`:
 
 ```par
-type Result<e, a> = either {
+type Try<e, a> = either {
   .err e,
   .ok a,
 }
@@ -162,7 +162,7 @@ Step by step:
 ### `and` with two bindings
 
 ```par
-dec AddOk : [Result<String, Int>, Result<String, Int>] Int
+dec AddOk : [Try<String, Int>, Try<String, Int>] Int
 def AddOk = [left, right] if {
   left is .ok a and right is .ok b => a + b,
   else => 0,
@@ -188,7 +188,7 @@ fails. A good mental model is:
 One common use for `or` is “fallback” matching:
 
 ```par
-dec PickOk : [Result<String, String>, Result<String, String>] String
+dec PickOk : [Try<String, String>, Try<String, String>] String
 def PickOk = [primary, fallback] if {
   primary is .ok value or fallback is .ok value => value,
   else => "<missing>",
@@ -211,7 +211,7 @@ guaranteed to exist after the `or`.
 grouping explicit, you can use `{ ... }` *inside a condition*:
 
 ```par
-dec EmptyOrSpace : [Result<String, String>] Bool
+dec EmptyOrSpace : [Try<String, String>] Bool
 def EmptyOrSpace = [result] if {
   result is .ok s and { s == "" or s == " " }
     => .true!,
@@ -229,7 +229,7 @@ that flip also affects bindings. Any bindings introduced inside the condition
 end up on the *failure* path of `not`.
 
 ```par
-dec UseOrError : [Result<String, String>] String
+dec UseOrError : [Try<String, String>] String
 def UseOrError = [result] if {
   not result is .ok value => "error",
   else => value,
@@ -247,7 +247,7 @@ Because `or` only evaluates its right side when the left side fails, you can
 combine `not` and `or` in a way that “unlocks” bindings on the right:
 
 ```par
-dec NonEmptyOrError : [Result<String, String>] String
+dec NonEmptyOrError : [Try<String, String>] String
 def NonEmptyOrError = [result] if {
   not result is .ok str or str == "" => "bad input",
   else => str,
@@ -264,7 +264,7 @@ Follow the control flow:
 This also works with grouped conditions:
 
 ```par
-dec AddBothOrZero : [Result<String, Int>, Result<String, Int>] Int
+dec AddBothOrZero : [Try<String, Int>, Try<String, Int>] Int
 def AddBothOrZero = [left, right] if {
   not { left is .ok x and right is .ok y } => 0,
   else => x + y,
@@ -329,7 +329,7 @@ In short: `do { ... } in expr` runs the process inside the braces, then
 continues as the expression after `in`.
 
 ```par
-dec Show : [Result<String, String>] !
+dec Show : [Try<String, String>] !
 def Show = [result] do {
   if {
     result is .ok msg => { Debug.Log(msg) }
@@ -374,7 +374,7 @@ process immediately.
 A common style is to use a single-condition `if` as a guard:
 
 ```par
-dec LogNonEmptyOk : [Result<String, String>] !
+dec LogNonEmptyOk : [Try<String, String>] !
 def LogNonEmptyOk = [result] chan exit {
   if not result is .ok str or str == "" => { exit! }
   Debug.Log(str)

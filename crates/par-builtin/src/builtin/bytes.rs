@@ -47,7 +47,7 @@ inventory::submit!(ExternalDef {
         package: PackageRef::CORE,
         path: &[],
         module: "Bytes",
-        name: "Parser"
+        name: "Parse"
     },
     f: |handle| Box::pin(bytes_parser(handle)),
 });
@@ -57,7 +57,7 @@ inventory::submit!(ExternalDef {
         package: PackageRef::CORE,
         path: &[],
         module: "Bytes",
-        name: "ParserFromReader"
+        name: "ParseReader"
     },
     f: |handle| Box::pin(bytes_parser_from_reader(handle)),
 });

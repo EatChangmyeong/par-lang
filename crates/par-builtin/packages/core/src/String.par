@@ -5,7 +5,8 @@ import {
   Char
   List
   Nat
-  Result
+  Stream
+  Try
 }
 
 export {
@@ -43,7 +44,7 @@ export {
   // Use `.begin`/`.loop` (from the `recursive` wrapper) to iterate over multiple matches.
   //
   // ```par
-  // String.Parser("Hello, world!").begin.case {
+  // String.Parse("Hello, world!").begin.case {
   //   .empty! => ...
   //   .ready r => r.minMax(.str "Hello", .str ", ").case {
   //     .err e => ...
@@ -55,14 +56,14 @@ export {
   type Parser<e> = recursive either {
     .empty!,
     .ready iterative@attempt choice {
-      .close => Result<e, !>,
-      .remainder => Result<e, String>,
-      .char => Result<e, (Char) self>,
-      .minMax(Pattern, Pattern) => Result<e, either {
+      .close => Try<e, !>,
+      .remainder => Try<e, String>,
+      .char => Try<e, (Char) self>,
+      .minMax(Pattern, Pattern) => Try<e, either {
         .match(String, String) self,
         .fail self@attempt,
       }>,
-      .minMaxEnd(Pattern, Pattern) => Result<e, either {
+      .minMaxEnd(Pattern, Pattern) => Try<e, either {
         .match(String, String)!,
         .fail self@attempt,
       }>,
@@ -112,15 +113,23 @@ export {
   dec Builder : Builder
 
   // Creates a `Parser` from a string. The error type is `either {}` (impossible).
-  dec Parser : [String] Parser<either {}>
+  dec Parse : [String] Parser<either {}>
 
   // Creates a string `Parser` from a `Bytes.Reader`.
   // The error type matches the reader's error type.
-  dec ParserFromReader : <e>[Bytes.Reader<e>] Parser<e>
+  dec ParseReader : <e>[Bytes.Reader<e>] Parser<e>
+
+  // Consumes a parser and returns all remaining unparsed input.
+  dec Remainder : <e>[Parser<e>] Try<e, String>
 
   // Splits a parser's remaining input into lines (separated by `\n`).
-  // Returns a fallible list that may end with a source error.
-  dec Lines : <e>[Parser<e>] List.Fallible<e, String>
+  dec Lines : <e>[Parser<e>] Stream<e, String>
+
+  // Splits a parser's remaining input on a string separator.
+  dec SplitBy : <e>[Parser<e>] [String] Stream<e, String>
+
+  // Splits a parser's remaining input on a string pattern.
+  dec SplitByPattern : <e>[Parser<e>] [Pattern] Stream<e, String>
 
   // Joins a list of strings with a separator between each element.
   //
@@ -138,7 +147,7 @@ export {
 
   // Reads all bytes from a `Reader` and decodes them into a `String`,
   // replacing invalid sequences with the Unicode replacement character.
-  dec ReadAll : <e>[Bytes.Reader<e>] Result<e, String>
+  dec ReadAll : <e>[Bytes.Reader<e>] Try<e, String>
 }
 
 def Quote = external
@@ -147,22 +156,41 @@ def FromBytes = external
 
 def Builder = external
 
-def Parser = external
+def Parse = external
 
-def ParserFromReader = external
+def ParseReader = external
 
-def Lines = <e>[parser]
-  catch e => .end .err e in
-  parser.begin.case {
-    .empty! => .end .ok!,
-    .ready parser => {
-      let try result = parser.minMax(.repeat.one.any!, .str "\n") in
-      result.case {
-        .fail parser => let try r = parser.remainder in .item(r) .end .ok!,
-        .match(line, _) parser => .item(line) parser.loop,
-      }
+def Remainder = <e>[parser] parser.case {
+  .empty! => .ok "",
+  .ready parser => parser.remainder,
+}
+
+def Lines = <e>[parser] parser->SplitByPattern(.or *(.str "\r\n", .str "\n"))
+
+def SplitBy = <e>[parser] [separator] parser->SplitByPattern(.str separator)
+
+def SplitByPattern = <e>[parser] [separator] parser.begin.case {
+  .empty! => .end.ok!,
+  .ready parser => parser.minMax(.repeat.one.any!, separator).case {
+    .err e => .end.err e,
+    .ok result => result.case {
+      .fail parser => Remainder(.ready parser).case {
+        .err e => .end.err e,
+        .ok chunk => .item case {
+          .cancel => .ok!,
+          .get => (chunk) .end.ok!,
+        },
+      },
+      .match(chunk, _) parser => .item case {
+        .cancel => parser.begin.case {
+          .empty! => .ok!,
+          .ready parser => parser.close,
+        },
+        .get => (chunk) parser.loop,
+      },
     },
-  }
+  },
+}
 
 def Join = [list, sep]
   let builder = Builder in
@@ -187,7 +215,4 @@ def Concat = [list]
     } in list.loop,
   }
 
-def ReadAll = <e>[reader] ParserFromReader(reader).case {
-  .empty! => .ok "",
-  .ready p => p.remainder,
-}
+def ReadAll = <e>[reader] ParseReader(reader)->Remainder

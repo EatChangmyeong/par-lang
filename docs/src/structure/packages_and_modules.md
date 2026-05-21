@@ -95,7 +95,7 @@ referenced directly.
 
 Every package automatically depends on two built-in packages:
 
-- `@core` for core types and data structures such as `String`, `List`, `Map`, `Result`, and so on.
+- `@core` for core types and data structures such as `String`, `List`, `Map`, `Try`, and so on.
 - `@basic` for simple I/O such as `Console`, `Os`, and `Http`.
 
 These are **implicit dependencies,** but **not implicit imports.** Their modules are available to import from,

@@ -1,8 +1,8 @@
-// `Result<e, a>` carries either `.ok a` or `.err e`.
+// `Try<e, a>` carries either `.ok a` or `.err e`.
 //
 // - `.ok a` means a successful result.
 // - `.err e` means an error has occurred.
-export module Result
+export module Try
 
 import {
   Bool
@@ -12,35 +12,35 @@ import {
 
 export {
   // A value that is either `.ok a` or `.err e`.
-  type Result<e, a> = either {
+  type Try<e, a> = either {
     .ok a,
     .err e,
   }
 
-  // Extracts the `.ok` branch from a `Result<either {}, a>`.
-  dec Always : <a>[Result<either {}, a>] a
+  // Extracts the `.ok` branch from a `Try<either {}, a>`.
+  dec Ok : <a>[Try<either {}, a>] a
 
   // Transforms the `.ok` value, if present.
-  dec Map : <e, a>[Result<e, a>] <b>[box [a] b] Result<e, b>
+  dec Map : <e, a>[Try<e, a>] <b>[box [a] b] Try<e, b>
 
   // Transforms the `.err` value, if present.
-  dec MapErr : <e1, a>[Result<e1, a>] <e2>[box [e1] e2] Result<e2, a>
+  dec MapErr : <e1, a>[Try<e1, a>] <e2>[box [e1] e2] Try<e2, a>
 
   // Transforms the `.ok` value with a computation that may itself fail.
-  dec FlatMap : <e, a>[Result<e, a>] <b>[box [a] Result<e, b>] Result<e, b>
+  dec FlatMap : <e, a>[Try<e, a>] <b>[box [a] Try<e, b>] Try<e, b>
 
   // Keeps a successful value only if it satisfies the predicate, otherwise
   // replaces it with the provided error.
-  dec Filter : <e, a: box>[Result<e, a>] [box e, box [a] Bool] Result<e, a>
+  dec Filter : <e, a: box>[Try<e, a>] [box e, box [a] Bool] Try<e, a>
 
   // Converts `.ok value` to a singleton list and `.err _` to an empty list.
-  dec ToList : <e: box, a>[Result<e, a>] List<a>
+  dec ToList : <e: box, a>[Try<e, a>] List<a>
 
   // Converts `.ok value` to `.some value` and `.err _` to `.none!`.
-  dec ToOption : <e: box, a>[Result<e, a>] Option<a>
+  dec ToOption : <e: box, a>[Try<e, a>] Option<a>
 }
 
-def Always = <a>[result] result.case {
+def Ok = <a>[result] result.case {
   .ok value => value,
   .err impossible => impossible.case {},
 }

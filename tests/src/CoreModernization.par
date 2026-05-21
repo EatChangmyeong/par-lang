@@ -3,6 +3,7 @@ module CoreModernization
 import {
   @core/Bool
   @core/BoxMap
+  @core/Bytes
   @core/Float
   @core/Int
   @core/Json
@@ -10,8 +11,10 @@ import {
   @core/Map
   @core/Nat
   @core/Option
+  @core/Stream
   @core/String
   @core/Test
+  @core/Try
 }
 
 type Key = (Nat) Nat
@@ -97,6 +100,93 @@ def TestListSorting : [Test] ! = [test] do {
       "List.SortLinearDescBy sorts by returned keys descending",
       linearDescTagged == {*((2) "first-two", (2) "second-two", (1) "one", (0) "zero")},
     )
+} in !
+
+def TestStreamCombinators : [Test] ! = [test] do {
+  let numbers = *(1, 2, 3, 4)
+  let transformed = numbers
+    ->Stream.FromList
+    ->Stream.Map(box [n] n * 2)
+    ->Stream.Filter(box [n] n > 4)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let firstTwo = numbers
+    ->Stream.FromList
+    ->Stream.Take(2)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let withoutTwo = numbers
+    ->Stream.FromList
+    ->Stream.Drop(2)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let (status) total = {0}->Stream.ForEach(
+    numbers->Stream.FromList,
+    box [sum, n] sum + n,
+  )
+
+  test
+    .assert("Stream.Map and Stream.Filter compose", transformed == {*(6, 8)})
+    .assert("Stream.Take limits a stream", firstTwo == {*(1, 2)})
+    .assert("Stream.Drop skips a prefix", withoutTwo == {*(3, 4)})
+    .assert("Stream.ForEach folds while preserving status", status is .ok! and total == 10)
+    .assert("Stream.All checks every item", numbers->Stream.FromList->Stream.All(box [n] n > 0)->Try.Ok)
+    .assert("Stream.Any short-circuits on a match", numbers->Stream.FromList->Stream.Any(box [n] n == 3)->Try.Ok)
+    .assert("Stream.Sum adds numeric items", numbers->Stream.FromList->Stream.Sum->Try.Ok == 10)
+} in !
+
+def TestStreamFlattening : [Test] ! = [test] do {
+  let stream1 = {*(1, 2)}->Stream.FromList
+  let stream2 = {*(3)}->Stream.FromList
+  let stream3 = {*(4, 5)}->Stream.FromList
+  let nested = *(stream1, stream2, stream3)
+
+  let concatenated = nested->Stream.Concat->Stream.ToList->Try.Ok
+
+  let flatMapped = {*(1, 2, 3)}
+    ->Stream.FromList
+    ->Stream.FlatMap(box [n] Stream.FromList(*(n, n * 10)))
+    ->Stream.ToList
+    ->Try.Ok
+
+  test
+    .assert("Stream.Concat joins a list of streams", concatenated == {*(1, 2, 3, 4, 5)})
+    .assert("Stream.FlatMap maps and flattens streams", flatMapped == {*(1, 10, 2, 20, 3, 30)})
+} in !
+
+def TestStreamSplitting : [Test] ! = [test] do {
+  let lines = String.Parse("alpha\nbeta\ngamma")
+    ->String.Lines
+    ->Stream.ToList
+    ->Try.Ok
+
+  let windowsLines = String.Parse("alpha\r\nbeta\r\ngamma")
+    ->String.Lines
+    ->Stream.ToList
+    ->Try.Ok
+
+  let stringParts = String.Parse("red::green::blue")
+    ->String.SplitBy("::")
+    ->Stream.ToList
+    ->Try.Ok
+
+  let remainder = String.Parse("remaining")->String.Remainder->Try.Ok
+
+  let bytesParts = Bytes.Parse("a,b,c")
+    ->Bytes.SplitBy(",")
+    ->Stream.Map(box String.FromBytes)
+    ->Stream.ToList
+    ->Try.Ok
+
+  test
+    .assert("String.Lines returns a stream of lines", lines == {*("alpha", "beta", "gamma")})
+    .assert("String.Lines accepts Windows line separators", windowsLines == {*("alpha", "beta", "gamma")})
+    .assert("String.SplitBy splits by string separators", stringParts == {*("red", "green", "blue")})
+    .assert("String.Remainder returns unparsed input", remainder == "remaining")
+    .assert("Bytes.SplitBy splits byte streams", bytesParts == {*("a", "b", "c")})
 } in !
 
 def TestMapConstructors : [Test] ! = [test] do {

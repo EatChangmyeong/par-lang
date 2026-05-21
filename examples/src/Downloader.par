@@ -9,7 +9,7 @@ import {
   @core/Map
   @core/Nat
   @core/Option
-  @core/Result
+  @core/Try
   @core/String
   @core/Url
   @core/Debug
@@ -56,7 +56,7 @@ def YieldDownloadRequests = [listenUrl, rootPath] chan yield {
       if method == "POST" => {
         let try sourceUrl = body
           ->String.ReadAll
-          ->Result.FlatMap(box Url.FromString)
+          ->Try.FlatMap(box Url.FromString)
 
         let destination = rootPath.append(url.path->TrimStart("/"))
         yield.item((sourceUrl, destination)!)
@@ -243,10 +243,10 @@ def FanIn = <a>[lists] chan yield {
 
 dec TrimStart : [Bytes, Bytes] Bytes
 def TrimStart = [whole, start]
-  Bytes.Parser(whole).begin.case {
+  Bytes.Parse(whole).begin.case {
     .empty! => whole,
-    .ready p => p.minMaxEnd(.bytes start, .repeat.one.any!)->Result.Always.case {
-      .fail p => let ! = p.close->Result.Always in whole,
+    .ready p => p.minMaxEnd(.bytes start, .repeat.one.any!)->Try.Ok.case {
+      .fail p => let ! = p.close->Try.Ok in whole,
       .match(_, trimmed)! => trimmed,
     },
   }
