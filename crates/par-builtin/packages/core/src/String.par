@@ -1,10 +1,12 @@
 export module String
 
 import {
+  Bool
   Bytes
   Char
   List
   Nat
+  Option
   Stream
   Try
 }
@@ -128,7 +130,7 @@ export {
   // Consumes a parser and returns all remaining unparsed input.
   dec Remainder : <e>[Parser<e>] Try<e, String>
 
-  // Splits a parser's remaining input into lines (separated by `\n`).
+  // Splits a parser's remaining input into lines separated by `\n` or `\r\n`.
   dec Lines : <e>[Parser<e>] Stream<e, String>
 
   // Splits a parser's remaining input on a string separator.
@@ -145,6 +147,31 @@ export {
 
   // Trims the given pattern once from the end of a string.
   dec TrimRight : [String, Pattern] String
+
+  // Returns `.true!` if a string starts with a pattern.
+  dec StartsWith : [String, Pattern] Bool
+
+  // Returns `.true!` if a string ends with a pattern.
+  dec EndsWith : [String, Pattern] Bool
+
+  // Returns the first substring matched by a pattern, if one exists.
+  dec Find : [String, Pattern] Option<String>
+
+  // Replaces non-overlapping occurrences of a string with another string.
+  //
+  // ```par
+  // String.Replace("red blue red", "red", "green")
+  // // = "green blue green"
+  // ```
+  dec Replace : [String, String, String] String
+
+  // Replaces non-overlapping pattern matches using a replacement function.
+  //
+  // ```par
+  // String.ReplacePattern("a12b345", .repeat1.one.ascii.digit!, box [_] "#")
+  // // = "a#b#"
+  // ```
+  dec ReplacePattern : [String, Pattern, box [String] String] String
 
   // Joins a list of strings with a separator between each element.
   //
@@ -231,6 +258,47 @@ def TrimRight = [string, pattern] Parse(string).begin.case {
     .match(trimmed, _)! => trimmed,
   },
 }
+
+def StartsWith = [string, pattern] Parse(string).case {
+  .empty! => .false!,
+  .ready parser => parser.minMax(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _) parser => let _ = parser->Remainder->Try.Ok in .true!,
+  },
+}
+
+def EndsWith = [string, pattern] Parse(string).case {
+  .empty! => .false!,
+  .ready parser => parser.minMaxEnd(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _)! => .true!,
+  },
+}
+
+def Find = [string, pattern] Parse(string).case {
+  .empty! => .none!,
+  .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .none!,
+    .match(_, found) parser => let _ = parser->Remainder->Try.Ok in .some found,
+  },
+}
+
+def Replace = [string, target, replacement]
+  string->ReplacePattern(.str target, box [_] replacement)
+
+def ReplacePattern = [string, pattern, replace]
+  let builder = Builder in
+  Parse(string).begin.case {
+    .empty! => builder.build,
+    .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+      .fail parser => do {
+        builder.add(parser.remainder->Try.Ok)
+      } in builder.build,
+      .match(before, found) parser => do {
+        builder.add(before).add(replace(found))
+      } in parser.loop,
+    },
+  }
 
 def Join = [list, sep]
   let builder = Builder in

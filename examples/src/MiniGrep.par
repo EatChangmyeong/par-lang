@@ -78,15 +78,7 @@ def GrepFile = [needle, reader]
 
 dec Contains : [String, String] Bool
 def Contains = [needle, haystack]
-  String.Parse(haystack).begin.case {
-    .empty! => .false!,
-    .ready parser => parser.minMax(.repeat.one.any!, .str needle)->Try.Ok.case {
-      .fail parser => do { parser.close } in .false!,
-      .match(_, _) parser => do {
-        if parser is .ready r => { r.close }
-      } in .true!,
-    },
-  }
+  String.Find(haystack, .str needle) is .some _
 
 // ---
 

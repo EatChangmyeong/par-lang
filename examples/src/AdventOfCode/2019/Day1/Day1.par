@@ -6,6 +6,7 @@ import {
   @core/List
   @core/Nat
   @core/Option
+  @core/Stream
   @core/Try
   @core/String
   @basic/Console
@@ -21,13 +22,7 @@ def FileRead = [path]
     ->Try.MapErr(box [_] !)
 
 dec StringLines : [String] List<String>
-def StringLines = [string] String.Parse(string).begin.case {
-  .empty! => .end!,
-  .ready reader => reader.minMax(.repeat.non.char "\n", .one.char "\n")->Try.Ok.case {
-    .fail attempt => .item(String.Remainder(.ready attempt)->Try.Ok).end!,
-    .match(line, _) reader => .item(line) reader.loop,
-  },
-}
+def StringLines = [string] String.Parse(string)->String.Lines->Stream.ToList->Try.Ok
 
 dec ListMap : [type a, type b, List<a>, box [a] b] List<b>
 def ListMap = [type a, type b, list, f] list.begin.case {

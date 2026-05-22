@@ -69,6 +69,18 @@ export {
   // Creates a directory and all necessary parent directories.
   dec CreateDir : [Path] Try<Error, !>
 
+  // Removes a file.
+  dec RemoveFile : [Path] Try<Error, !>
+
+  // Removes an empty directory.
+  dec RemoveDir : [Path] Try<Error, !>
+
+  // Moves or renames a file.
+  dec MoveFile : [Path, Path] Try<Error, !>
+
+  // Moves or renames a directory.
+  dec MoveDir : [Path, Path] Try<Error, !>
+
   // Lists the entries of a directory, returning a list of paths sorted by name.
   dec ListDir : [Path] Try<Error, List<Path>>
 
@@ -107,6 +119,14 @@ def AppendToFile = external
 def CreateOrAppendToFile = external
 
 def CreateDir = external
+
+def RemoveFile = external
+
+def RemoveDir = external
+
+def MoveFile = external
+
+def MoveDir = external
 
 def ListDir = external
 

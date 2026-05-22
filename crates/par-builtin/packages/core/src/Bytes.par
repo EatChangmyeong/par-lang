@@ -2,8 +2,10 @@ export module Bytes
 
 import {
   Byte
+  Bool
   List
   Nat
+  Option
   Stream
   Try
 }
@@ -128,6 +130,9 @@ export {
   // Consumes a parser and returns all remaining unparsed bytes.
   dec Remainder : <e>[Parser<e>] Try<e, Bytes>
 
+  // Streams a parser's remaining input one byte at a time.
+  dec Chunks : <e>[Parser<e>] Stream<e, Bytes>
+
   // Splits a parser's remaining input on a byte separator.
   dec SplitBy : <e>[Parser<e>] [Bytes] Stream<e, Bytes>
 
@@ -139,6 +144,31 @@ export {
 
   // Trims the given pattern once from the end of a byte sequence.
   dec TrimRight : [Bytes, Pattern] Bytes
+
+  // Returns `.true!` if a byte sequence starts with a pattern.
+  dec StartsWith : [Bytes, Pattern] Bool
+
+  // Returns `.true!` if a byte sequence ends with a pattern.
+  dec EndsWith : [Bytes, Pattern] Bool
+
+  // Returns the first byte sequence matched by a pattern, if one exists.
+  dec Find : [Bytes, Pattern] Option<Bytes>
+
+  // Replaces non-overlapping occurrences of a byte sequence with another byte sequence.
+  //
+  // ```par
+  // Bytes.Replace("red blue red", "red", "green")
+  // // = "green blue green"
+  // ```
+  dec Replace : [Bytes, Bytes, Bytes] Bytes
+
+  // Replaces non-overlapping pattern matches using a replacement function.
+  //
+  // ```par
+  // Bytes.ReplacePattern("a12b345", .repeat1.one.range(<<48>>, <<57>>)!, box [_] "#")
+  // // = "a#b#"
+  // ```
+  dec ReplacePattern : [Bytes, Pattern, box [Bytes] Bytes] Bytes
 
   // Creates a `Reader` from a function that writes to a `Writer`.
   // The function receives a `Writer<!>` whose writes fail with `!` if the
@@ -175,6 +205,20 @@ def ParseReader = external
 def Remainder = <e>[parser] parser.case {
   .empty! => .ok "",
   .ready parser => parser.remainder,
+}
+
+def Chunks = <e>[parser] parser.begin.case {
+  .empty! => .end.ok!,
+  .ready parser => parser.byte.case {
+    .err e => .end.err e,
+    .ok(byte) parser => .item case {
+      .cancel => parser.begin.case {
+        .empty! => .ok!,
+        .ready parser => parser.close,
+      },
+      .get => (byte) parser.loop,
+    },
+  },
 }
 
 def SplitBy = <e>[parser] [separator] parser->SplitByPattern(.bytes separator)
@@ -217,6 +261,47 @@ def TrimRight = [bytes, pattern] Parse(bytes).begin.case {
     .match(trimmed, _)! => trimmed,
   },
 }
+
+def StartsWith = [bytes, pattern] Parse(bytes).case {
+  .empty! => .false!,
+  .ready parser => parser.minMax(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _) parser => let _ = parser->Remainder->Try.Ok in .true!,
+  },
+}
+
+def EndsWith = [bytes, pattern] Parse(bytes).case {
+  .empty! => .false!,
+  .ready parser => parser.minMaxEnd(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _)! => .true!,
+  },
+}
+
+def Find = [bytes, pattern] Parse(bytes).case {
+  .empty! => .none!,
+  .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .none!,
+    .match(_, found) parser => let _ = parser->Remainder->Try.Ok in .some found,
+  },
+}
+
+def Replace = [bytes, target, replacement]
+  bytes->ReplacePattern(.bytes target, box [_] replacement)
+
+def ReplacePattern = [bytes, pattern, replace]
+  let builder = Builder in
+  Parse(bytes).begin.case {
+    .empty! => builder.build,
+    .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+      .fail parser => do {
+        builder.add(parser.remainder->Try.Ok)
+      } in builder.build,
+      .match(before, found) parser => do {
+        builder.add(before).add(replace(found))
+      } in parser.loop,
+    },
+  }
 
 def PipeReader = external
 

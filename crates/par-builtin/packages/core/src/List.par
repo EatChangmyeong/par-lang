@@ -47,6 +47,9 @@ export {
   // Keeps the elements for which the test function returns `.true!`.
   dec Filter : <a: box>[List<a>] [box [a] Bool] List<a>
 
+  // Returns the first element for which the test function returns `.true!`.
+  dec Find : <a: box>[List<a>] [box [a] Bool] Option<a>
+
   // Applies a folding function repeatedly to the current result and each list
   // element, returning the final result.
   //
@@ -74,8 +77,14 @@ export {
   // Flattens a list of lists into a single list.
   dec Concat : <a>[List<List<a>>] List<a>
 
+  // Returns a list with the elements in reverse order.
+  dec Reverse : <a>[List<a>] List<a>
+
   // Yields all items from a source list onto a destination channel, consuming the source.
   dec Copy : <a>[dual List<a>] [List<a>] dual List<a>
+
+  // Pairs each element with its zero-based index.
+  dec Enumerate : <a>[List<a>] List<(Nat) a>
 
   // Zips two lists into a list of pairs. Stops at the shorter list.
   dec Zip : <a: box>[List<a>] <b: box>[List<b>] List<(a) b>
@@ -147,6 +156,14 @@ def Filter = <a: box>[list] [f] list.begin.case {
   },
 }
 
+def Find = <a: box>[list] [f] list.begin.case {
+  .end! => .none!,
+  .item(v) list => f(v).case {
+    .true! => .some v,
+    .false! => list.loop,
+  },
+}
+
 def ForEach = <r>[result] <a>[list] [f] list.begin.case {
   .end! => result,
   .item(v) list => do { result->f(v) } in list.loop,
@@ -171,6 +188,15 @@ def Concat = <a>[lists] chan yield {
   }
 }
 
+def Reverse = <a>[list]
+  let reversed: List<a> = .end! in
+  list.begin.case {
+    .end! => reversed,
+    .item(v) list => do {
+      let reversed = .item(v) reversed
+    } in list.loop,
+  }
+
 def Copy = <a>[dst] [src] do {
   src.begin.case {
     .end! => {},
@@ -180,6 +206,16 @@ def Copy = <a>[dst] [src] do {
     },
   }
 } in dst
+
+def Enumerate = <a>[list]
+  let index = 0 in
+  list.begin.case {
+    .end! => .end!,
+    .item(v) list => do {
+      let current = index
+      index += 1
+    } in .item((current) v) list.loop,
+  }
 
 def Zip = <a: box>[list1] <b: box>[list2] chan yield {
   list1.begin.case {

@@ -121,6 +121,46 @@ inventory::submit!(ExternalDef {
         package: PackageRef::BASIC,
         path: &[],
         module: "Os",
+        name: "RemoveFile"
+    },
+    f: |handle| Box::pin(os_remove_file(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::BASIC,
+        path: &[],
+        module: "Os",
+        name: "RemoveDir"
+    },
+    f: |handle| Box::pin(os_remove_dir(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::BASIC,
+        path: &[],
+        module: "Os",
+        name: "MoveFile"
+    },
+    f: |handle| Box::pin(os_move_file(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::BASIC,
+        path: &[],
+        module: "Os",
+        name: "MoveDir"
+    },
+    f: |handle| Box::pin(os_move_dir(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::BASIC,
+        path: &[],
+        module: "Os",
         name: "ListDir"
     },
     f: |handle| Box::pin(os_list_dir(handle)),
@@ -309,6 +349,19 @@ async fn provide_bytes_writer_from_async(mut handle: Handle, mut writer: impl As
                 }
             }
             _ => unreachable!(),
+        }
+    }
+}
+
+fn provide_unit_io_result(mut handle: Handle, result: std::io::Result<()>) {
+    match result {
+        Ok(()) => {
+            handle.signal(literal!("ok"));
+            handle.break_();
+        }
+        Err(err) => {
+            handle.signal(literal!("err"));
+            handle.provide_string(ParString::from(err.to_string()));
         }
     }
 }
@@ -514,6 +567,28 @@ async fn os_create_dir(mut handle: Handle) {
             return handle.provide_string(ParString::from(err.to_string()));
         }
     }
+}
+
+async fn os_remove_file(mut handle: Handle) {
+    let path = pathbuf_from_os_path(handle.receive()).await;
+    provide_unit_io_result(handle, fs::remove_file(&path).await);
+}
+
+async fn os_remove_dir(mut handle: Handle) {
+    let path = pathbuf_from_os_path(handle.receive()).await;
+    provide_unit_io_result(handle, fs::remove_dir(&path).await);
+}
+
+async fn os_move_file(mut handle: Handle) {
+    let src = pathbuf_from_os_path(handle.receive()).await;
+    let dst = pathbuf_from_os_path(handle.receive()).await;
+    provide_unit_io_result(handle, fs::rename(&src, &dst).await);
+}
+
+async fn os_move_dir(mut handle: Handle) {
+    let src = pathbuf_from_os_path(handle.receive()).await;
+    let dst = pathbuf_from_os_path(handle.receive()).await;
+    provide_unit_io_result(handle, fs::rename(&src, &dst).await);
 }
 
 async fn os_list_dir(mut handle: Handle) {
