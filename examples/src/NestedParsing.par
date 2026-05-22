@@ -1,4 +1,4 @@
-module Parsing
+module NestedParsing
 
 import {
   @core/Int
