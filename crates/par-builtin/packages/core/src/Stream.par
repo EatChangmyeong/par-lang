@@ -1,3 +1,8 @@
+// Pull-based streams with fallible completion and explicit cancellation.
+//
+// A stream can end successfully, end with an error, or yield one item at a time.
+// Consumers may stop early by calling `.cancel`, which lets the producer close
+// any underlying resource before the stream is discarded.
 export module Stream
 
 import {
@@ -9,6 +14,14 @@ import {
 }
 
 export {
+  // A pull-based sequence of values of type `a` whose completion can fail with
+  // an error of type `e`.
+  //
+  // Cases:
+  // - `.end` means the stream is exhausted. Its payload is `.ok!` on normal
+  //   completion, or `.err` if the producer failed.
+  // - `.item` offers one item. The consumer must either call `.get` to receive
+  //   it and continue, or `.cancel` to stop early.
   type Stream<e, a> = recursive either {
     .end Try<e, !>,
     .item choice {
@@ -17,20 +30,54 @@ export {
     },
   }
 
+  // Collects the stream into a list, preserving any stream error.
   dec ToList : <e, a: box>[Stream<e, a>] Try<e, List<a>>
+
+  // Creates an infallible stream from a list.
   dec FromList : <a: box>[List<a>] Stream<either {}, a>
+
+  // Applies a mapping function to each item of a stream.
   dec Map : <e, a>[Stream<e, a>] <b>[box [a] b] Stream<e, b>
+
+  // Applies a mapping function to the stream's error type.
   dec MapErr : <e1, a>[Stream<e1, a>] <e2>[box [e1] e2] Stream<e2, a>
+
+  // Maps each item to a stream, then flattens the result.
   dec FlatMap : <e: box, a>[Stream<e, a>] <b>[box [a] Stream<e, b>] Stream<e, b>
+
+  // Flattens a stream of streams into a single stream.
   dec Flatten : <e: box, a>[Stream<e, Stream<e, a>>] Stream<e, a>
+
+  // Concatenates a list of streams into a single stream.
   dec Concat : <e: box, a>[List<Stream<e, a>>] Stream<e, a>
+
+  // Keeps the items for which the test function returns `.true!`.
   dec Filter : <e, a: box>[Stream<e, a>] [box [a] Bool] Stream<e, a>
+
+  // Yields at most the requested number of items, cancelling the source if
+  // enough items were taken before it ended.
   dec Take : <e, a: box>[Stream<e, a>] [Nat] Stream<e, a>
+
+  // Skips the requested number of items and yields the rest.
   dec Drop : <e, a: box>[Stream<e, a>] [Nat] Stream<e, a>
+
+  // Folds over the stream. The returned pair contains the stream completion
+  // status and the final accumulator.
   dec ForEach : <r>[r] <e, a>[Stream<e, a>] [box [r, a] r] (Try<e, !>) r
+
+  // Returns `.ok.true!` if the test function holds for every item.
+  // Short-circuits and cancels the source on the first `.false!`.
   dec All : <e, a>[Stream<e, a>] [box [a] Bool] Try<e, Bool>
+
+  // Returns `.ok.true!` if the test function holds for at least one item.
+  // Short-circuits and cancels the source on the first `.true!`.
   dec Any : <e, a>[Stream<e, a>] [box [a] Bool] Try<e, Bool>
+
+  // Calculates the sum of all stream items.
   dec Sum : <e, a: number>[Stream<e, a>] Try<e, a>
+
+  // Cancels a stream if it has not already ended, returning any cancellation
+  // or completion error.
   dec Cancel : <e, a>[Stream<e, a>] Try<e, !>
 }
 

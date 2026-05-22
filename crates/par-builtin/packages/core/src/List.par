@@ -33,7 +33,7 @@ export {
   // Creates a new list `Builder`.
   dec Builder : [type a] Builder<a>
 
-  // Applies `f` to each element of a list.
+  // Applies a mapping function to each element of a list.
   //
   // ```par
   // {*(1, 2, 3)}->List.Map(box [n] n * 2)
@@ -41,14 +41,14 @@ export {
   // ```
   dec Map : <a>[List<a>] <b>[box [a] b] List<b>
 
-  // Applies `f` to each element and concatenates the resulting lists.
+  // Maps each element to a list, then concatenates the result.
   dec FlatMap : <a>[List<a>] <b>[box [a] List<b>] List<b>
 
-  // Keeps the elements for which the predicate returns `.true!`.
+  // Keeps the elements for which the test function returns `.true!`.
   dec Filter : <a: box>[List<a>] [box [a] Bool] List<a>
 
-  // Applies `f` repeatedly to the current result and each list element, returning
-  // the final result.
+  // Applies a folding function repeatedly to the current result and each list
+  // element, returning the final result.
   //
   // Expression syntax:
   //
@@ -83,18 +83,18 @@ export {
   // Splits a list of pairs into a pair of lists.
   dec Unzip : <a, b>[List<(a) b>] (List<a>) List<b>
 
-  // Returns `.true!` if the predicate holds for all elements.
+  // Returns `.true!` if the test function holds for all elements.
   // Short-circuits on the first `.false!`.
   dec All : <a: box>[List<a>] [box [a] Bool] Bool
 
-  // Returns `.true!` if the predicate holds for at least one element.
+  // Returns `.true!` if the test function holds for at least one element.
   // Short-circuits on the first `.true!`.
   dec Any : <a: box>[List<a>] [box [a] Bool] Bool
 
-  // Returns the first `n` elements of a list.
+  // Returns up to the requested number of elements from the start of a list.
   dec Take : <a: box>[List<a>] [Nat] List<a>
 
-  // Drops the first `n` elements of a list and returns the rest.
+  // Drops the requested number of elements from the start of a list.
   dec Drop : <a: box>[List<a>] [Nat] List<a>
 
   // Sorts a list in ascending data order. Equal keys keep their original order.
