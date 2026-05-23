@@ -154,6 +154,9 @@ export {
   // Returns `.true!` if a byte sequence ends with a pattern.
   dec EndsWith : [Bytes, Pattern] Bool
 
+  // Returns `.true!` if a whole byte sequence matches a pattern.
+  dec Matches : [Bytes, Pattern] Bool
+
   // Returns the first byte sequence matched by a pattern, if one exists.
   dec Find : [Bytes, Pattern] Option<Bytes>
 
@@ -286,6 +289,14 @@ def EndsWith = [bytes, pattern] Parse(bytes).case {
   },
 }
 
+def Matches = [bytes, pattern] Parse(bytes).case {
+  .empty! => pattern->ContainsEmpty,
+  .ready parser => parser.minMaxEnd(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _)! => .true!,
+  }
+}
+
 def Find = [bytes, pattern] Parse(bytes).case {
   .empty! => .none!,
   .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
@@ -314,3 +325,20 @@ def ReplacePattern = [bytes, pattern, replace]
 def PipeReader = external
 
 def ReadAll = <e>[reader] ParseReader(reader)->Remainder
+
+// Helpers
+
+dec ContainsEmpty : [Pattern] Bool
+def ContainsEmpty = [pattern] pattern.begin.case {
+  .empty! => .true!,
+  .bytes b => b == "",
+  .one _ => .false!,
+  .non _ => .false!,
+  .min n => n == 0,
+  .max _ => .true!,
+  .repeat _ => .true!,
+  .repeat1 p => p.loop,
+  .concat ps => ps->List.All(box [p] p.loop),
+  .and ps => ps->List.All(box [p] p.loop),
+  .or ps => ps->List.Any(box [p] p.loop),
+}

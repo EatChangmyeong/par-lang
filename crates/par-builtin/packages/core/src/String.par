@@ -157,6 +157,9 @@ export {
   // Returns `.true!` if a string ends with a pattern.
   dec EndsWith : [String, Pattern] Bool
 
+  // Returns `.true!` if a whole string matches a pattern.
+  dec Matches : [String, Pattern] Bool
+
   // Returns the first substring matched by a pattern, if one exists.
   dec Find : [String, Pattern] Option<String>
 
@@ -283,6 +286,14 @@ def EndsWith = [string, pattern] Parse(string).case {
   },
 }
 
+def Matches = [string, pattern] Parse(string).case {
+  .empty! => pattern->ContainsEmpty,
+  .ready parser => parser.minMaxEnd(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _)! => .true!,
+  }
+}
+
 def Find = [string, pattern] Parse(string).case {
   .empty! => .none!,
   .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
@@ -332,3 +343,20 @@ def Concat = [list]
   }
 
 def ReadAll = <e>[reader] ParseReader(reader)->Remainder
+
+// Helpers
+
+dec ContainsEmpty : [Pattern] Bool
+def ContainsEmpty = [pattern] pattern.begin.case {
+  .empty! => .true!,
+  .str s => s == "",
+  .one _ => .false!,
+  .non _ => .false!,
+  .min n => n == 0,
+  .max _ => .true!,
+  .repeat _ => .true!,
+  .repeat1 p => p.loop,
+  .concat ps => ps->List.All(box [p] p.loop),
+  .and ps => ps->List.All(box [p] p.loop),
+  .or ps => ps->List.Any(box [p] p.loop),
+}
