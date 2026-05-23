@@ -17,7 +17,7 @@ inventory::submit!(ExternalDef {
         package: PackageRef::BASIC,
         path: &[],
         module: "Time",
-        name: "Now"
+        name: "Now_"
     },
     f: |handle| Box::pin(time_now(handle)),
 });

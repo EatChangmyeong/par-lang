@@ -3,6 +3,8 @@ module CoreModernization
 import {
   @core/Bool
   @core/BoxMap
+  @core/Bytes
+  @core/Char
   @core/Float
   @core/Int
   @core/Json
@@ -10,8 +12,10 @@ import {
   @core/Map
   @core/Nat
   @core/Option
+  @core/Stream
   @core/String
   @core/Test
+  @core/Try
 }
 
 type Key = (Nat) Nat
@@ -51,6 +55,9 @@ def TestListConstraintsAndEquality : [Test] ! = [test] do {
   let firstTwo = values->List.Take(2)
   let withoutTwo = values->List.Drop(2)
   let zipped = firstTwo->List.Zip(*("one", "two", "three"))
+  let reversed = values->List.Reverse
+  let found = values->List.Find(box [n] n > 2)
+  let enumerated = values->List.Enumerate
   let sum = {0}->List.ForEach(values, box [sum, n] sum + n)
   let builder = List.Builder(type Nat)
   builder->List.ForEach(values, box [b, n] b.add(n * 2))
@@ -65,6 +72,9 @@ def TestListConstraintsAndEquality : [Test] ! = [test] do {
     .assert("List.Any accepts a box-constrained element type", values->List.Any(box [n] n == 3))
     .assert("List.Take accepts a box-constrained element type", firstTwo == {*(1, 2)})
     .assert("List.Drop accepts a box-constrained element type", withoutTwo == {*(3, 4)})
+    .assert("List.Reverse reverses list order", reversed == {*(4, 3, 2, 1)})
+    .assert("List.Find returns the first matching element", found is .some n and n == 3)
+    .assert("List.Enumerate pairs values with indices", enumerated == {*((0) 1, (1) 2, (2) 3, (3) 4)})
     .assert("List.ForEach works in expression syntax", sum == 10)
     .assert("List.ForEach works in process syntax", doubled == {*(2, 4, 6, 8)})
 } in !
@@ -97,6 +107,134 @@ def TestListSorting : [Test] ! = [test] do {
       "List.SortLinearDescBy sorts by returned keys descending",
       linearDescTagged == {*((2) "first-two", (2) "second-two", (1) "one", (0) "zero")},
     )
+} in !
+
+def TestStreamCombinators : [Test] ! = [test] do {
+  let numbers = *(1, 2, 3, 4)
+  let transformed = numbers
+    ->Stream.FromList
+    ->Stream.Map(box [n] n * 2)
+    ->Stream.Filter(box [n] n > 4)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let firstTwo = numbers
+    ->Stream.FromList
+    ->Stream.Take(2)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let withoutTwo = numbers
+    ->Stream.FromList
+    ->Stream.Drop(2)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let (status) total = {0}->Stream.ForEach(
+    numbers->Stream.FromList,
+    box [sum, n] sum + n,
+  )
+
+  test
+    .assert("Stream.Map and Stream.Filter compose", transformed == {*(6, 8)})
+    .assert("Stream.Take limits a stream", firstTwo == {*(1, 2)})
+    .assert("Stream.Drop skips a prefix", withoutTwo == {*(3, 4)})
+    .assert("Stream.ForEach folds while preserving status", status is .ok! and total == 10)
+    .assert("Stream.All checks every item", numbers->Stream.FromList->Stream.All(box [n] n > 0)->Try.Ok)
+    .assert("Stream.Any short-circuits on a match", numbers->Stream.FromList->Stream.Any(box [n] n == 3)->Try.Ok)
+    .assert("Stream.Sum adds numeric items", numbers->Stream.FromList->Stream.Sum->Try.Ok == 10)
+} in !
+
+def TestStreamFlattening : [Test] ! = [test] do {
+  let stream1 = {*(1, 2)}->Stream.FromList
+  let stream2 = {*(3)}->Stream.FromList
+  let stream3 = {*(4, 5)}->Stream.FromList
+  let nested = *(stream1, stream2, stream3)
+
+  let concatenated = nested->Stream.Concat->Stream.ToList->Try.Ok
+
+  let flatMapped = {*(1, 2, 3)}
+    ->Stream.FromList
+    ->Stream.FlatMap(box [n] Stream.FromList(*(n, n * 10)))
+    ->Stream.ToList
+    ->Try.Ok
+
+  test
+    .assert("Stream.Concat joins a list of streams", concatenated == {*(1, 2, 3, 4, 5)})
+    .assert("Stream.FlatMap maps and flattens streams", flatMapped == {*(1, 10, 2, 20, 3, 30)})
+} in !
+
+def TestStreamSplitting : [Test] ! = [test] do {
+  let lines = String.Parse("alpha\nbeta\ngamma")
+    ->String.Lines
+    ->Stream.ToList
+    ->Try.Ok
+
+  let windowsLines = String.Parse("alpha\r\nbeta\r\ngamma")
+    ->String.Lines
+    ->Stream.ToList
+    ->Try.Ok
+
+  let stringParts = String.Parse("red::green::blue")
+    ->String.SplitBy("::")
+    ->Stream.ToList
+    ->Try.Ok
+
+  let remainder = String.Parse("remaining")->String.Remainder->Try.Ok
+
+  let bytesRemainder = Bytes.Parse("bytes")->Bytes.Remainder->Try.Ok
+
+  let bytesParts = Bytes.Parse("a,b,c")
+    ->Bytes.SplitBy(",")
+    ->Stream.Map(box String.FromBytes)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let byteChunks = Bytes.Parse("abc")
+    ->Bytes.Chunks
+    ->Stream.Map(box String.FromBytes)
+    ->Stream.ToList
+    ->Try.Ok
+
+  test
+    .assert("String.Lines returns a stream of lines", lines == {*("alpha", "beta", "gamma")})
+    .assert("String.Lines accepts Windows line separators", windowsLines == {*("alpha", "beta", "gamma")})
+    .assert("String.SplitBy splits by string separators", stringParts == {*("red", "green", "blue")})
+    .assert("String.Remainder returns unparsed input", remainder == "remaining")
+    .assert("Bytes.Remainder returns unparsed input", String.FromBytes(bytesRemainder) == "bytes")
+    .assert("Bytes.SplitBy splits byte streams", bytesParts == {*("a", "b", "c")})
+    .assert("Bytes.Chunks streams one byte at a time", byteChunks == {*("a", "b", "c")})
+} in !
+
+def TestTextCasingAndTrimming : [Test] ! = [test] do {
+  let replacedNumbers = String.ReplacePattern("a12b345", .repeat1.one.ascii.digit!)(box [digits]
+    String.Concat(*("[", digits, "]"))
+  )
+  let replacedByteNumbers = Bytes.ReplacePattern("a12b345", .repeat1.one.range(<<48>>, <<57>>)!)(
+    box [digits] String.Concat(*("[", String.FromBytes(digits), "]")),
+  )
+
+  test
+    .assert("Char.ToLower lowercases a character", Char.ToLower("A") == "a")
+    .assert("Char.ToUpper uppercases a character", Char.ToUpper("z") == "Z")
+    .assert("String.ToLower lowercases a string", String.ToLower("Hello WORLD") == "hello world")
+    .assert("String.ToUpper uppercases a string", String.ToUpper("Hello world") == "HELLO WORLD")
+    .assert("String.Trim trims surrounding whitespace", String.Trim(" \tHello\n") == "Hello")
+    .assert("String.TrimLeft trims one leading pattern", String.TrimLeft("::value::", .str "::") == "value::")
+    .assert("String.TrimLeft keeps strings without the pattern", String.TrimLeft("value::", .str "::") == "value::")
+    .assert("String.TrimRight trims one trailing pattern", String.TrimRight("::value::", .str "::") == "::value")
+    .assert("String.StartsWith matches a prefix pattern", String.StartsWith("hello", .str "he"))
+    .assert("String.EndsWith matches a suffix pattern", String.EndsWith("hello", .str "lo"))
+    .assert("String.Find returns the matched text", String.Find("abc123", .repeat1.one.ascii.digit!) is .some found and found == "123")
+    .assert("String.Replace replaces literal matches", String.Replace("red blue red", "red", "green") == "green blue green")
+    .assert("String.ReplacePattern transforms pattern matches", replacedNumbers == "a[12]b[345]")
+    .assert("Bytes.TrimLeft trims one leading pattern", String.FromBytes(Bytes.TrimLeft("--data--", .bytes "--")) == "data--")
+    .assert("Bytes.TrimRight trims one trailing pattern", String.FromBytes(Bytes.TrimRight("--data--", .bytes "--")) == "--data")
+    .assert("Bytes.StartsWith matches a prefix pattern", Bytes.StartsWith("hello", .bytes "he"))
+    .assert("Bytes.EndsWith matches a suffix pattern", Bytes.EndsWith("hello", .bytes "lo"))
+    .assert("Bytes.Find returns the matched bytes", Bytes.Find("abc123", .bytes "123") is .some found and String.FromBytes(found) == "123")
+    .assert("Bytes.Replace replaces literal matches", String.FromBytes(Bytes.Replace("red blue red", "red", "green")) == "green blue green")
+    .assert("Bytes.ReplacePattern transforms pattern matches", String.FromBytes(replacedByteNumbers) == "a[12]b[345]")
 } in !
 
 def TestMapConstructors : [Test] ! = [test] do {

@@ -7,7 +7,7 @@ import {
   Float
   List as CoreList
   Option
-  Result
+  Try
   String as CoreString
 }
 
@@ -37,7 +37,7 @@ export {
   // A `Format<a>` exposes a single `.parse` operation that returns `.ok value`
   // on success or `.err!` on mismatch.
   type Format<a> = box choice {
-    .parse(Json) => Result<!, a>
+    .parse(Json) => Try<!, a>
   }
 
   // A reusable parser specialized to JSON objects.
@@ -45,14 +45,14 @@ export {
   // Use `Json.Object(...)` to lift an `ObjectFormat<a>` into a full
   // `Format<a>`.
   type ObjectFormat<a> = box choice {
-    .parseObject(BoxMap.Readonly<CoreString, Json>) => Result<!, a>,
+    .parseObject(BoxMap.Readonly<CoreString, Json>) => Try<!, a>,
   }
 
   // Encodes a `Json` value into compact JSON text.
   dec Encode : [Json] CoreString
 
   // Decodes JSON text into a materialized `Json` value.
-  dec Decode : [CoreString] Result<Error, Json>
+  dec Decode : [CoreString] Try<Error, Json>
 
   // Tests two `Json` values for structural equality.
   //
@@ -70,7 +70,7 @@ export {
   //
   // The mapping function returns `.ok value` to accept the parsed result or
   // `.err!` to reject it.
-  dec Then : <a>[Format<a>] <b>[box [a] Result<!, b>] Format<b>
+  dec Then : <a>[Format<a>] <b>[box [a] Try<!, b>] Format<b>
 
   // Matches exactly one JSON value.
   dec Literal : [Json] Format<!>

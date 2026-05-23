@@ -4,7 +4,7 @@ import {
   @core/Bool
   @core/List
   @core/Nat
-  @core/Result
+  @core/Try
   @core/String
   @basic/Console
   @basic/Os
@@ -57,7 +57,7 @@ def Main: ! = chan exit {
   exit!
 }
 
-dec TraverseDirectory : [Os.Path] Result<Os.Error, List<Os.Path>>
+dec TraverseDirectory : [Os.Path] Try<Os.Error, List<Os.Path>>
 def TraverseDirectory = [dirPath]
   catch e => .err e in
   let try tree = Os.TraverseDir(dirPath) in
@@ -69,7 +69,7 @@ def TraverseDirectory = [dirPath]
 
 dec GrepFile : [String, Os.Reader] Iterator<Os.Error, (Nat) String>
 def GrepFile = [needle, reader]
-  String.ParserFromReader(reader)
+  String.ParseReader(reader)
     ->Lines
     ->Enumerate1
     ->Filter(box [(_) line] Contains(needle, line))
@@ -78,40 +78,40 @@ def GrepFile = [needle, reader]
 
 dec Contains : [String, String] Bool
 def Contains = [needle, haystack]
-  String.Parser(haystack).match(.repeat.one.any!, .str needle).case {
-    .end _ => .false!,
-    .fail reader => do {
-      reader.close
-    } in .false!,
-    .match(_, _) reader => do {
-      reader.close
-    } in .true!,
-  }
+  String.Find(haystack, .str needle) is .some _
 
 // ---
 
 type Iterator<e, a> = recursive choice {
-  .close => Result<e, !>,
+  .close => Try<e, !>,
   .next => either {
-    .end Result<e, !>,
+    .end Try<e, !>,
     .item(a) self,
   }
 }
 
 dec Lines : <e>[String.Parser<e>] Iterator<e, String>
 def Lines = <e>[parser] do { parser.begin } in case {
-  .close => parser.close,
+  .close => parser.case {
+    .empty! => .ok!,
+    .ready parser => parser.close,
+  },
 
-  .next => parser.match(.repeat.one.any!, .str "\n").case {
-    .end result => .end result,
-    .fail parser => parser.remainder.case {
+  .next => parser.case {
+    .empty! => .end.ok!,
+    .ready parser => parser.minMax(.repeat.one.any!, .str "\n").case {
       .err e => .end.err e,
-      .ok line => .item(line) case {
-        .close => .ok!,
-        .next => .end.ok!,
+      .ok result => result.case {
+        .fail parser => String.Remainder(.ready parser).case {
+          .err e => .end.err e,
+          .ok line => .item(line) case {
+            .close => .ok!,
+            .next => .end.ok!,
+          },
+        },
+        .match(line, _) parser => .item(line) parser.loop,
       },
-    }
-    .match(line, _) parser => .item(line) parser.loop,
+    },
   }
 }
 

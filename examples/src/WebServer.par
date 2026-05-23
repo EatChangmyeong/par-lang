@@ -3,7 +3,7 @@ module WebServer
 import {
   @core/Bytes
   @core/List
-  @core/Result
+  @core/Try
   @core/String
   @core/Url
   @basic/Console
@@ -45,13 +45,13 @@ def Main: ! = chan exit {
   }
 }
 
-dec ServePath : [Os.Path, String, [Http.Response] Result<Http.Error, !>] !
+dec ServePath : [Os.Path, String, [Http.Response] Try<Http.Error, !>] !
 def ServePath = [root, path, respond] path->Os.Path->Os.ListDir.case {
   .err _ => ServeFile(path, respond),
   .ok paths => ServeDir(root, paths, respond),
 }
 
-dec ServeFile : [String, [Http.Response] Result<Http.Error, !>] !
+dec ServeFile : [String, [Http.Response] Try<Http.Error, !>] !
 def ServeFile = [path, respond] chan finish {
   catch e => { Debug.Log(e); finish! }
   catch e => {
@@ -65,7 +65,7 @@ def ServeFile = [path, respond] chan finish {
   finish!
 }
 
-dec ServeDir : [Os.Path, List<Os.Path>, [Http.Response] Result<Http.Error, !>] !
+dec ServeDir : [Os.Path, List<Os.Path>, [Http.Response] Try<Http.Error, !>] !
 def ServeDir = [root, paths, respond] chan finish {
   let content = Bytes.PipeReader([w] catch ! => .ok! in do {
     w.write("<ul>").try
@@ -75,7 +75,7 @@ def ServeDir = [root, paths, respond] chan finish {
       .item(path) => {
         w.write("<li>").try
         w.write("<a href=\"").try
-        w.write(TrimPrefix(root.absolute, path.absolute)).try
+        w.write(path.absolute->Bytes.TrimLeft(.bytes root.absolute)).try
         w.write("\">").try
         w.write(path.name).try
         w.write("</a>").try
@@ -91,11 +91,3 @@ def ServeDir = [root, paths, respond] chan finish {
   respond((200, *(("Content-Type") "text/html")) content)
   finish!
 }
-
-dec TrimPrefix : [Bytes, Bytes] Bytes
-def TrimPrefix = [prefix, bytes]
-  bytes->Bytes.Parser.matchEnd(.bytes prefix, .repeat.one.any!).case {
-    .end _ => bytes,
-    .fail p => do { p.close } in bytes,
-    .match(_, trimmed)! => trimmed,
-  }

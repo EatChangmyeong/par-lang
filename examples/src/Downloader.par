@@ -9,6 +9,7 @@ import {
   @core/Map
   @core/Nat
   @core/Option
+  @core/Try
   @core/String
   @core/Url
   @core/Debug
@@ -53,12 +54,11 @@ def YieldDownloadRequests = [listenUrl, rootPath] chan yield {
       }
 
       if method == "POST" => {
-        let try sourceUrl = catch e => .err e in
-          String.ParserFromReader(body)
-            .remainder.try
-            ->Url.FromString
+        let try sourceUrl = body
+          ->String.ReadAll
+          ->Try.FlatMap(box Url.FromString)
 
-        let destination = rootPath.append(url.path->TrimStart("/"))
+        let destination = rootPath.append(url.path->Bytes.TrimLeft(.bytes "/"))
         yield.item((sourceUrl, destination)!)
         respond((200, *()) Bytes.EmptyReader)
         next.loop
@@ -95,17 +95,17 @@ def DownloadFile = [(sourceUrl, dest)!] chan yield {
   yield.item((dest) .started totalSize)
 
   let bytesSinceLastEvent = 0
-  let timeOfLastEvent = Time.Now(!)
+  let timeOfLastEvent = Time.Now
 
   body.begin.read.try@clearFile.case {
     .chunk(bytes) => {
       file.write(bytes).try@clearResp
 
       bytesSinceLastEvent += Bytes.Length(bytes)
-      if timeOfLastEvent + 100 <= Time.Now(!) => {
+      if timeOfLastEvent + 100 <= Time.Now => {
         yield.item((dest) .progressed bytesSinceLastEvent)
         let bytesSinceLastEvent = 0
-        let timeOfLastEvent = Time.Now(!)
+        let timeOfLastEvent = Time.Now
       }
 
       body.loop
@@ -124,7 +124,7 @@ dec ShowDownloadProgress : [List<Event>, Os.Path] !
 def ShowDownloadProgress = [events, rootPath] chan exit {
   let getName = box [path: Os.Path]
     path.absolute
-      ->TrimStart(rootPath.absolute)
+      ->Bytes.TrimLeft(.bytes rootPath.absolute)
       ->String.FromBytes
 
   catch e => {
@@ -154,7 +154,7 @@ def ShowDownloadProgress = [events, rootPath] chan exit {
 
         .finished! => {
           tracker.file(name).ended[startTime, downloadedSize]
-          let duration = Time.Now(!) - startTime
+          let duration = Time.Now - startTime
           let speed = downloadedSize * 1000 / duration
           stdout.write(String.Concat(*(
             `\nFinished downloading ${name}\n`,
@@ -204,7 +204,7 @@ def NewProgressTracker: ProgressTracker = do {
   .file(name) => do {
     filesInProgress.entry(name)[entry]
     if not entry is .some(startTime, expected, downloaded)! => {
-      let startTime = Time.Now(!)
+      let startTime = Time.Now
       let expected = 0
       let downloaded = 0
     }
@@ -240,11 +240,3 @@ def FanIn = <a>[lists] chan yield {
     }) lists.loop
   }).end!
 }
-
-dec TrimStart : [Bytes, Bytes] Bytes
-def TrimStart = [whole, start]
-  Bytes.Parser(whole).matchEnd(.bytes start, .repeat.one.any!).case {
-    .end _ => whole,
-    .fail p => do { p.close } in whole,
-    .match(_, trimmed)! => trimmed,
-  }

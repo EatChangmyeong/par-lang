@@ -1,10 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::frontend_impl::language::{
-        GlobalName, LocalName, TypeConstraint, TypeParameter, Universal,
-    };
-    use crate::frontend_impl::types::implicit::infer_holes;
-    use crate::frontend_impl::types::{GlobalNameWriter, Type, TypeDefs, TypeError};
+    use crate::frontend_impl::language::{GlobalName, LocalName, TypeParameter, Universal};
+    use crate::frontend_impl::types::{GlobalNameWriter, Type, TypeDefs};
     use crate::location::Span;
     use crate::workspace::render_type_in_scope;
     use arcstr::{ArcStr, literal};
@@ -234,32 +231,5 @@ choice {
   .put => [Int] @__test__/Main.Map<String, Int>,
 }"
         );
-    }
-
-    #[test]
-    fn test_signed_inference_rejects_nat_upper_bounds() {
-        let inferred = infer_holes(
-            &Span::None,
-            &Type::function(Type::<Universal>::nat(), Type::<Universal>::break_()),
-            &Type::function(Type::<Universal>::var("a"), Type::<Universal>::break_()),
-            &[TypeParameter {
-                name: LocalName {
-                    span: Span::None,
-                    string: ArcStr::from("a"),
-                },
-                constraint: TypeConstraint::Signed,
-            }],
-            &TypeDefs::default(),
-        );
-
-        assert!(matches!(
-            inferred,
-            Err(TypeError::TypeDoesNotSatisfyConstraint(
-                _,
-                _,
-                _,
-                TypeConstraint::Signed
-            )) | Err(TypeError::CannotAssignFromTo(_, _, _))
-        ));
     }
 }

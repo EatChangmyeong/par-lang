@@ -9,7 +9,7 @@ import {
   @core/Json
   @core/List
   @core/Option
-  @core/Result
+  @core/Try
   @core/String
 }
 
@@ -35,11 +35,11 @@ def SomeValidAndInvalidActions : List<String> = *(
   `{"action": "decrement", "delta": 10}`,
 )
 
-def ParsedActions : List<Result<!, Action>> =
+def ParsedActions : List<Try<!, Action>> =
   SomeValidAndInvalidActions
     ->List.Map(box Json.Decode)
     ->List.Map(box [result] {
       result
-        ->Result.MapErr(box [_] !)
-        ->Result.FlatMap(box ActionFormat.parse)
+        ->Try.MapErr(box [_] !)
+        ->Try.FlatMap(box ActionFormat.parse)
     })

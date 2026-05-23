@@ -128,9 +128,10 @@ impl Handle {
                 primitive
             )
         };
-        let value = value.as_str();
-        assert!(value.len() == 1);
-        value.chars().nth(0).unwrap()
+        let mut chars = value.as_str().chars();
+        let ch = chars.next().unwrap();
+        assert!(chars.next().is_none());
+        ch
     }
 
     pub async fn string(self) -> ParString {

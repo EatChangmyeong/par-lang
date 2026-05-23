@@ -3,7 +3,8 @@ module StringManipulation
 import {
   @core/Char
   @core/List
-  @core/Result
+  @core/Option
+  @core/Try
   @core/String
 }
 
@@ -17,48 +18,43 @@ def TestSplit = Split("  Some   more words .", .whitespace!)
 //            = *("Some", "more", "words", ".")
 
 dec Trim : [String, Char.Class] String
-def Trim = [s: String, c: Char.Class] chan ret {
-  let r = String.Parser(s)
-  r.match(.empty!, .repeat.one c).case {
-    .end _ => { ret <> "" }
-    .fail => {}
-    .match(_, _) => {}
+def Trim = [s: String, c: Char.Class]
+  String.Parse(s).begin.case {
+    .empty! => "",
+    .ready r => r.minMax(.empty!, .repeat.one c)->Try.Ok.case {
+      .fail r => TrimEnd(.ready r, c),
+      .match(_, _) r => TrimEnd(r, c),
+    },
   }
-  r.matchEnd(.repeat.one.any!, .repeat.one c).case {
-    .end _ => { ret <> "" }
-    .fail => {
-      r.close
-      ret <> ""
-    }
-    .match(trimmed, _)! => {
-      ret <> trimmed
-    }
+
+dec TrimEnd : [String.Parser<either {}>, Char.Class] String
+def TrimEnd = [r, c] r.begin.case {
+  .empty! => "",
+  .ready r => r.minMaxEnd(.repeat.one.any!, .repeat.one c)->Try.Ok.case {
+    .fail r => let ! = r.close->Try.Ok in "",
+    .match(trimmed, _)! => trimmed,
   }
 }
 
-dec Find : [String, String.Pattern] either {
-  .none!,
-  .some(String, String, String)!,
-}
-def Find = [s, p] String.Parser(s).match(.repeat.one.any!, p).case {
-  .end _ => .none!,
-  .fail r => do { r.close } in .none!,
-  .match(before, found) r =>
-    .some(before, found, Result.Always(r.remainder))!
+dec Find : [String, String.Pattern] Option<(String, String, String)!>
+def Find = [s, p] String.Parse(s).begin.case {
+  .empty! => .none!,
+  .ready r => r.minMax(.repeat.one.any!, p)->Try.Ok.case {
+    .fail r => let ! = r.close->Try.Ok in .none!,
+    .match(before, found) r =>
+      .some(before, found, r->String.Remainder->Try.Ok)!
+  },
 }
 
 dec Split : [String, Char.Class] List<String>
 def Split = [s, c] chan yield {
-  let r = String.Parser(s)
-  r.begin.match(.repeat.one c, .repeat1.non c).case {
-    .end _ => { yield.end! }
-    .fail => {
-       r.close
-       yield.end!
-    }
-    .match(_, part) => {
-      yield.item(part)
-      r.loop
-    }
+  String.Parse(s).begin.case {
+    .empty! => { yield.end! },
+    .ready r => {
+      r.minMax(.repeat.one c, .repeat1.non c)->Try.Ok.case {
+        .fail r => { r.close; yield.end! },
+        .match(_, part) r => { yield.item(part); r.loop },
+      }
+    },
   }
 }

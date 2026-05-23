@@ -11,7 +11,6 @@ import {
   Nat
   Number
   Option
-  Result
 }
 
 export {
@@ -31,17 +30,10 @@ export {
     .build => List<a>,
   }
 
-  // A list that ends with `Result<e, !>` instead of `!`.
-  // Use it for streams that may finish with an error.
-  type Fallible<e, a> = recursive either {
-    .end Result<e, !>,
-    .item(a) self,
-  }
-
   // Creates a new list `Builder`.
   dec Builder : [type a] Builder<a>
 
-  // Applies `f` to each element of a list.
+  // Applies a mapping function to each element of a list.
   //
   // ```par
   // {*(1, 2, 3)}->List.Map(box [n] n * 2)
@@ -49,14 +41,17 @@ export {
   // ```
   dec Map : <a>[List<a>] <b>[box [a] b] List<b>
 
-  // Applies `f` to each element and concatenates the resulting lists.
+  // Maps each element to a list, then concatenates the result.
   dec FlatMap : <a>[List<a>] <b>[box [a] List<b>] List<b>
 
-  // Keeps the elements for which the predicate returns `.true!`.
+  // Keeps the elements for which the test function returns `.true!`.
   dec Filter : <a: box>[List<a>] [box [a] Bool] List<a>
 
-  // Applies `f` repeatedly to the current result and each list element, returning
-  // the final result.
+  // Returns the first element for which the test function returns `.true!`.
+  dec Find : <a: box>[List<a>] [box [a] Bool] Option<a>
+
+  // Applies a folding function repeatedly to the current result and each list
+  // element, returning the final result.
   //
   // Expression syntax:
   //
@@ -82,8 +77,14 @@ export {
   // Flattens a list of lists into a single list.
   dec Concat : <a>[List<List<a>>] List<a>
 
+  // Returns a list with the elements in reverse order.
+  dec Reverse : <a>[List<a>] List<a>
+
   // Yields all items from a source list onto a destination channel, consuming the source.
   dec Copy : <a>[dual List<a>] [List<a>] dual List<a>
+
+  // Pairs each element with its zero-based index.
+  dec Enumerate : <a>[List<a>] List<(Nat) a>
 
   // Zips two lists into a list of pairs. Stops at the shorter list.
   dec Zip : <a: box>[List<a>] <b: box>[List<b>] List<(a) b>
@@ -91,18 +92,18 @@ export {
   // Splits a list of pairs into a pair of lists.
   dec Unzip : <a, b>[List<(a) b>] (List<a>) List<b>
 
-  // Returns `.true!` if the predicate holds for all elements.
+  // Returns `.true!` if the test function holds for all elements.
   // Short-circuits on the first `.false!`.
   dec All : <a: box>[List<a>] [box [a] Bool] Bool
 
-  // Returns `.true!` if the predicate holds for at least one element.
+  // Returns `.true!` if the test function holds for at least one element.
   // Short-circuits on the first `.true!`.
   dec Any : <a: box>[List<a>] [box [a] Bool] Bool
 
-  // Returns the first `n` elements of a list.
+  // Returns up to the requested number of elements from the start of a list.
   dec Take : <a: box>[List<a>] [Nat] List<a>
 
-  // Drops the first `n` elements of a list and returns the rest.
+  // Drops the requested number of elements from the start of a list.
   dec Drop : <a: box>[List<a>] [Nat] List<a>
 
   // Sorts a list in ascending data order. Equal keys keep their original order.
@@ -155,6 +156,14 @@ def Filter = <a: box>[list] [f] list.begin.case {
   },
 }
 
+def Find = <a: box>[list] [f] list.begin.case {
+  .end! => .none!,
+  .item(v) list => f(v).case {
+    .true! => .some v,
+    .false! => list.loop,
+  },
+}
+
 def ForEach = <r>[result] <a>[list] [f] list.begin.case {
   .end! => result,
   .item(v) list => do { result->f(v) } in list.loop,
@@ -179,6 +188,15 @@ def Concat = <a>[lists] chan yield {
   }
 }
 
+def Reverse = <a>[list]
+  let reversed: List<a> = .end! in
+  list.begin.case {
+    .end! => reversed,
+    .item(v) list => do {
+      let reversed = .item(v) reversed
+    } in list.loop,
+  }
+
 def Copy = <a>[dst] [src] do {
   src.begin.case {
     .end! => {},
@@ -188,6 +206,16 @@ def Copy = <a>[dst] [src] do {
     },
   }
 } in dst
+
+def Enumerate = <a>[list]
+  let index = 0 in
+  list.begin.case {
+    .end! => .end!,
+    .item(v) list => do {
+      let current = index
+      index += 1
+    } in .item((current) v) list.loop,
+  }
 
 def Zip = <a: box>[list1] <b: box>[list2] chan yield {
   list1.begin.case {

@@ -7,7 +7,7 @@ import {
   @core/List
   @core/Map
   @core/Nat
-  @core/Result
+  @core/Try
   @core/String
   @basic/Console
 }
@@ -45,13 +45,17 @@ def Main: ! = chan exit {
         console.print("Could not read input")
         step.loop
       }
-      String.Parser(line).char.case {
-        .end _ => {
+      String.Parse(line).case {
+        .empty! => {
           console.print("Empty input")
           step.loop
         },
-        .char(char) rest => {
-          rest.close
+        .ready input => {
+          let (char) rest = input.char->Try.Ok
+          let ! = rest.case {
+            .empty! => !,
+            .ready rest => rest.close->Try.Ok,
+          }
           if char == "x" => {
             CloseUndoStack(undoStack)
             state.close
@@ -252,7 +256,7 @@ def PictureOfPlayer = [direction] direction.case {
 dec PictureOfPeg : Char
 def PictureOfPeg = "●"
 
-dec Maze : [Coord] Result<!, Tile>
+dec Maze : [Coord] Try<!, Tile>
 def Maze = [(x, y)!] chan return {
   if Int.Abs(x) > 4 => {
     return <> .err!
@@ -277,7 +281,7 @@ def Maze = [(x, y)!] chan return {
 
 // Helpers
 
-dec CoordListIndex : [List<Coord>, Coord] Result<!, Nat>
+dec CoordListIndex : [List<Coord>, Coord] Try<!, Nat>
 def CoordListIndex = [list, (x, y)!]
   let index = 0 in
   list.begin.case {

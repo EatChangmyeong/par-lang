@@ -8,7 +8,7 @@ import {
   @core/Bytes
   @core/List
   @core/Nat
-  @core/Result
+  @core/Try
   @core/String
   @core/Url
 }
@@ -43,7 +43,7 @@ export {
   //   Bytes.EmptyReader
   // )
   // ```
-  dec Fetch : [Request] Result<Error, Response>
+  dec Fetch : [Request] Try<Error, Response>
 
   // `Http.Listen(address)` starts an HTTP server on `address`,
   // such as `"127.0.0.1:8080"`.
@@ -65,8 +65,8 @@ export {
   // }
   // ```
   dec Listen : [String] recursive either {
-    .shutdown Result<Error, !>,
-    .incoming(Request, [Response] Result<Error, !>) self,
+    .shutdown Try<Error, !>,
+    .incoming(Request, [Response] Try<Error, !>) self,
   }
 }
 

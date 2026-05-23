@@ -6,7 +6,8 @@ import {
   @core/List
   @core/Nat
   @core/Option
-  @core/Result
+  @core/Stream
+  @core/Try
   @core/String
   @basic/Console
   @basic/Os
@@ -14,20 +15,14 @@ import {
 
 // Helpers
 
-dec FileRead : [String] Result<!, String>
+dec FileRead : [String] Try<!, String>
 def FileRead = [path]
-  catch _ => .err! in
-  let try reader = path->Os.Path->Os.OpenFile in
-  let parser = String.ParserFromReader(reader) in
-  let try contents = parser.remainder in
-  .ok contents
+  path->Os.Path->Os.OpenFile
+    ->Try.FlatMap(box [r] r->String.ReadAll)
+    ->Try.MapErr(box [_] !)
 
 dec StringLines : [String] List<String>
-def StringLines = [string] String.Parser(string).begin.match(.repeat.non.char "\n", .one.char "\n").case {
-  .end err => let ! = Result.Always(err) in .end!
-  .fail attempt => .item(Result.Always(attempt.remainder)).end!
-  .match(line, _) reader => .item(line) reader.loop
-}
+def StringLines = [string] String.Parse(string)->String.Lines->Stream.ToList->Try.Ok
 
 dec ListMap : [type a, type b, List<a>, box [a] b] List<b>
 def ListMap = [type a, type b, list, f] list.begin.case {
@@ -35,7 +30,7 @@ def ListMap = [type a, type b, list, f] list.begin.case {
   .item(x) list => .item(f(x)) list.loop,
 }
 
-dec ListMapTry : [type a, type e, type b, List<box a>, box [a] Result<e, box b>] Result<e, List<b>>
+dec ListMapTry : [type a, type e, type b, List<box a>, box [a] Try<e, box b>] Try<e, List<b>>
 def ListMapTry = [type a, type e, type b, list, f]
   let builder: List.Builder<box b> = List.Builder(type box b) in
   list.begin.case {

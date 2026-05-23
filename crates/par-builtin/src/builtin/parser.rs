@@ -18,6 +18,7 @@ pub(super) trait BytesRemainder {
     async fn provide_err(handle: Handle, err: Self::Err);
 
     async fn close(self) -> Result<(), Self::Err>;
+    async fn peek_byte(&mut self) -> Result<Option<u8>, Self::Err>;
     fn bytes(&mut self) -> Self::Iterator<'_>;
     fn pop_bytes(&mut self, n: usize) -> Bytes;
     async fn remaining_bytes(&mut self) -> Result<Bytes, Self::Err>;
@@ -32,6 +33,7 @@ pub(super) trait CharsRemainder {
     async fn provide_err(handle: Handle, err: Self::Err);
 
     async fn close(self) -> Result<(), Self::Err>;
+    async fn peek_byte(&mut self) -> Result<Option<u8>, Self::Err>;
     fn chars(&mut self) -> Self::Iterator<'_>;
     fn pop_chars(&mut self, n: usize) -> ParString;
     async fn remaining_chars(&mut self) -> Result<ParString, Self::Err>;
@@ -181,13 +183,20 @@ impl BytesRemainder for ReaderRemainder {
     }
 
     async fn close(mut self) -> Result<(), Self::Err> {
-        let handle = self.handle.as_mut().unwrap();
+        let Some(handle) = self.handle.as_mut() else {
+            return Ok(());
+        };
         handle.signal(literal!("close"));
         match handle.case().await.as_str() {
             "ok" => Ok(self.handle.take().unwrap().continue_()),
             "err" => Err(self.handle.take().unwrap()),
             _ => unreachable!(),
         }
+    }
+
+    async fn peek_byte(&mut self) -> Result<Option<u8>, Self::Err> {
+        let mut bytes = self.bytes();
+        bytes.next().await.map(|item| item.map(|(_, b)| b))
     }
 
     fn bytes(&mut self) -> Self::Iterator<'_> {
@@ -224,13 +233,23 @@ impl CharsRemainder for ReaderRemainder {
     }
 
     async fn close(mut self) -> Result<(), Self::Err> {
-        let handle = self.handle.as_mut().unwrap();
+        let Some(handle) = self.handle.as_mut() else {
+            return Ok(());
+        };
         handle.signal(literal!("close"));
         match handle.case().await.as_str() {
             "ok" => Ok(self.handle.take().unwrap().continue_()),
             "err" => Err(self.handle.take().unwrap()),
             _ => unreachable!(),
         }
+    }
+
+    async fn peek_byte(&mut self) -> Result<Option<u8>, Self::Err> {
+        let mut bytes = ReaderRemainderByteIterator {
+            remainder: self,
+            index: 0,
+        };
+        bytes.next().await.map(|item| item.map(|(_, b)| b))
     }
 
     fn chars(&mut self) -> Self::Iterator<'_> {
@@ -271,6 +290,10 @@ impl BytesRemainder for Bytes {
 
     async fn close(self) -> Result<(), Self::Err> {
         Ok(())
+    }
+
+    async fn peek_byte(&mut self) -> Result<Option<u8>, Self::Err> {
+        Ok(self.first().copied())
     }
 
     fn bytes(&mut self) -> Self::Iterator<'_> {
@@ -318,6 +341,10 @@ impl CharsRemainder for ParString {
         Ok(())
     }
 
+    async fn peek_byte(&mut self) -> Result<Option<u8>, Self::Err> {
+        Ok(self.as_str().as_bytes().first().copied())
+    }
+
     fn chars(&mut self) -> Self::Iterator<'_> {
         (0, self)
     }
@@ -348,334 +375,383 @@ impl<'a> AsyncCharIterator for (usize, &'a ParString) {
     }
 }
 
-pub(super) async fn provide_bytes_parser<R: BytesRemainder>(mut handle: Handle, mut remainder: R) {
-    loop {
-        match handle.case().await.as_str() {
-            "close" => match remainder.close().await {
-                Ok(()) => {
-                    handle.signal(literal!("ok"));
+enum ParserState<R, E> {
+    Live(R),
+    Poison(E),
+}
+
+pub(super) async fn provide_bytes_parser<R: BytesRemainder>(mut handle: Handle, remainder: R) {
+    let mut state = ParserState::Live(remainder);
+
+    'outer: loop {
+        state = match state {
+            ParserState::Live(mut remainder) => match remainder.peek_byte().await {
+                Ok(Some(_)) => {
+                    handle.signal(literal!("ready"));
+                    ParserState::Live(remainder)
+                }
+                Ok(None) => {
+                    handle.signal(literal!("empty"));
                     return handle.break_();
                 }
                 Err(err) => {
+                    handle.signal(literal!("ready"));
+                    ParserState::Poison(err)
+                }
+            },
+            ParserState::Poison(err) => {
+                handle.signal(literal!("ready"));
+                ParserState::Poison(err)
+            }
+        };
+
+        'inner: loop {
+            state = match state {
+                ParserState::Poison(err) => {
+                    match handle.case().await.as_str() {
+                        "close" | "remainder" | "byte" => {}
+                        "minMax" | "minMaxEnd" => {
+                            let _ = BytesPattern::readback(handle.receive()).await;
+                            let _ = BytesPattern::readback(handle.receive()).await;
+                        }
+                        _ => unreachable!(),
+                    }
                     handle.signal(literal!("err"));
                     return R::provide_err(handle, err).await;
                 }
-            },
 
-            "byte" => {
-                let mut bytes = remainder.bytes();
-                match bytes.next().await {
-                    Ok(Some((_, b))) => {
-                        drop(bytes);
-                        handle.signal(literal!("byte"));
-                        handle.send().provide_byte(b);
-                        remainder.pop_bytes(1);
-                    }
-                    Ok(None) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("ok"));
-                        return handle.break_();
-                    }
-                    Err(err) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("err"));
-                        return R::provide_err(handle, err).await;
-                    }
-                }
-            }
-
-            "match" => {
-                let prefix = BytesPattern::readback(handle.receive()).await;
-                let suffix = BytesPattern::readback(handle.receive()).await;
-                match remainder.bytes().next().await {
-                    Ok(Some(_)) => {}
-                    Ok(None) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("ok"));
-                        return handle.break_();
-                    }
-                    Err(err) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("err"));
-                        return R::provide_err(handle, err).await;
-                    }
-                }
-
-                let mut m = BytesMachine::start(Box::new(BytesPattern::Concat(prefix, suffix)));
-
-                let mut best_match = None;
-                let mut bytes = remainder.bytes();
-                loop {
-                    let (pos, b) = match bytes.next().await {
-                        Ok(Some((pos, b))) => (pos, b),
-                        Ok(None) => break,
+                ParserState::Live(mut remainder) => match handle.case().await.as_str() {
+                    "close" => match remainder.close().await {
+                        Ok(()) => {
+                            handle.signal(literal!("ok"));
+                            return handle.break_();
+                        }
                         Err(err) => {
-                            handle.signal(literal!("end"));
                             handle.signal(literal!("err"));
                             return R::provide_err(handle, err).await;
                         }
-                    };
-                    match (m.leftmost_feasible_split(pos), best_match) {
-                        (Some(fi), Some((bi, _))) if fi > bi => break,
-                        (None, _) => break,
-                        _ => {}
-                    }
-                    m.advance(pos, b);
-                    match (m.leftmost_accepting_split(), best_match) {
-                        (Some(ai), Some((bi, _))) if ai <= bi => best_match = Some((ai, pos + 1)),
-                        (Some(ai), None) => best_match = Some((ai, pos + 1)),
-                        _ => {}
-                    }
-                }
-                drop(bytes);
+                    },
 
-                match best_match {
-                    Some((i, j)) => {
-                        handle.signal(literal!("match"));
-                        handle.send().provide_bytes(remainder.pop_bytes(i));
-                        handle.send().provide_bytes(remainder.pop_bytes(j - i));
-                    }
-                    None => {
-                        handle.signal(literal!("fail"));
-                    }
-                }
-            }
-
-            "matchEnd" => {
-                let prefix = BytesPattern::readback(handle.receive()).await;
-                let suffix = BytesPattern::readback(handle.receive()).await;
-                match remainder.bytes().next().await {
-                    Ok(Some(_)) => {}
-                    Ok(None) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("ok"));
-                        return handle.break_();
-                    }
-                    Err(err) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("err"));
-                        return R::provide_err(handle, err).await;
-                    }
-                }
-
-                let mut m = BytesMachine::start(Box::new(BytesPattern::Concat(prefix, suffix)));
-
-                let mut bytes = remainder.bytes();
-                loop {
-                    let (pos, b) = match bytes.next().await {
-                        Ok(Some((pos, b))) => (pos, b),
-                        Ok(None) => break,
-                        Err(err) => {
-                            handle.signal(literal!("end"));
-                            handle.signal(literal!("err"));
-                            return R::provide_err(handle, err).await;
-                        }
-                    };
-                    if m.accepts() == None {
-                        break;
-                    }
-                    m.advance(pos, b);
-                }
-                drop(bytes);
-
-                match m.leftmost_accepting_split() {
-                    Some(i) => {
-                        let left = remainder.pop_bytes(i);
-                        let right = match remainder.remaining_bytes().await {
-                            Ok(bytes) => bytes,
+                    "byte" => {
+                        let mut bytes = remainder.bytes();
+                        match bytes.next().await {
+                            Ok(Some((_, b))) => {
+                                drop(bytes);
+                                handle.signal(literal!("ok"));
+                                handle.send().provide_byte(b);
+                                remainder.pop_bytes(1);
+                                ParserState::Live(remainder)
+                            }
+                            Ok(None) => unreachable!("parser attempt should be non-empty"),
                             Err(err) => {
-                                handle.signal(literal!("end"));
                                 handle.signal(literal!("err"));
                                 return R::provide_err(handle, err).await;
                             }
-                        };
-                        handle.signal(literal!("match"));
-                        handle.send().provide_bytes(left);
-                        handle.send().provide_bytes(right);
-                        return handle.break_();
+                        }
                     }
-                    None => {
-                        handle.signal(literal!("fail"));
+
+                    "minMax" => {
+                        let prefix = BytesPattern::readback(handle.receive()).await;
+                        let suffix = BytesPattern::readback(handle.receive()).await;
+                        let mut m =
+                            BytesMachine::start(Box::new(BytesPattern::Concat(prefix, suffix)));
+
+                        let mut best_match = None;
+                        let mut bytes = remainder.bytes();
+                        loop {
+                            let (pos, b) = match bytes.next().await {
+                                Ok(Some((pos, b))) => (pos, b),
+                                Ok(None) => break,
+                                Err(err) => {
+                                    handle.signal(literal!("err"));
+                                    return R::provide_err(handle, err).await;
+                                }
+                            };
+                            match (m.leftmost_feasible_split(pos), best_match) {
+                                (Some(fi), Some((bi, _))) if fi > bi => break,
+                                (None, _) => break,
+                                _ => {}
+                            }
+                            m.advance(pos, b);
+                            match (m.leftmost_accepting_split(), best_match) {
+                                (Some(ai), Some((bi, _))) if ai <= bi => {
+                                    best_match = Some((ai, pos + 1))
+                                }
+                                (Some(ai), None) => best_match = Some((ai, pos + 1)),
+                                _ => {}
+                            }
+                        }
+                        drop(bytes);
+
+                        match best_match {
+                            Some((i, j)) => {
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("match"));
+                                handle.send().provide_bytes(remainder.pop_bytes(i));
+                                handle.send().provide_bytes(remainder.pop_bytes(j - i));
+                                ParserState::Live(remainder)
+                            }
+                            None => {
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("fail"));
+                                state = ParserState::Live(remainder);
+                                continue 'inner;
+                            }
+                        }
                     }
-                }
-            }
-            "remainder" => match remainder.remaining_bytes().await {
-                Ok(bytes) => {
-                    handle.signal(literal!("ok"));
-                    return handle.provide_bytes(bytes);
-                }
-                Err(err) => {
-                    handle.signal(literal!("err"));
-                    return R::provide_err(handle, err).await;
-                }
-            },
-            _ => unreachable!(),
+
+                    "minMaxEnd" => {
+                        let prefix = BytesPattern::readback(handle.receive()).await;
+                        let suffix = BytesPattern::readback(handle.receive()).await;
+                        let mut m =
+                            BytesMachine::start(Box::new(BytesPattern::Concat(prefix, suffix)));
+
+                        let mut bytes = remainder.bytes();
+                        loop {
+                            let (pos, b) = match bytes.next().await {
+                                Ok(Some((pos, b))) => (pos, b),
+                                Ok(None) => break,
+                                Err(err) => {
+                                    handle.signal(literal!("err"));
+                                    return R::provide_err(handle, err).await;
+                                }
+                            };
+                            if m.accepts() == None {
+                                break;
+                            }
+                            m.advance(pos, b);
+                        }
+                        drop(bytes);
+
+                        match m.leftmost_accepting_split() {
+                            Some(i) => {
+                                let left = remainder.pop_bytes(i);
+                                let right = match remainder.remaining_bytes().await {
+                                    Ok(bytes) => bytes,
+                                    Err(err) => {
+                                        handle.signal(literal!("err"));
+                                        return R::provide_err(handle, err).await;
+                                    }
+                                };
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("match"));
+                                handle.send().provide_bytes(left);
+                                handle.send().provide_bytes(right);
+                                return handle.break_();
+                            }
+                            None => {
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("fail"));
+                                state = ParserState::Live(remainder);
+                                continue 'inner;
+                            }
+                        }
+                    }
+
+                    "remainder" => match remainder.remaining_bytes().await {
+                        Ok(bytes) => {
+                            handle.signal(literal!("ok"));
+                            return handle.provide_bytes(bytes);
+                        }
+                        Err(err) => {
+                            handle.signal(literal!("err"));
+                            return R::provide_err(handle, err).await;
+                        }
+                    },
+
+                    _ => unreachable!(),
+                },
+            };
+
+            continue 'outer;
         }
     }
 }
 
-pub(super) async fn provide_string_parser<R: CharsRemainder>(mut handle: Handle, mut remainder: R) {
-    loop {
-        match handle.case().await.as_str() {
-            "close" => match remainder.close().await {
-                Ok(()) => {
-                    handle.signal(literal!("ok"));
+pub(super) async fn provide_string_parser<R: CharsRemainder>(mut handle: Handle, remainder: R) {
+    let mut state = ParserState::Live(remainder);
+
+    'outer: loop {
+        state = match state {
+            ParserState::Live(mut remainder) => match remainder.peek_byte().await {
+                Ok(Some(_)) => {
+                    handle.signal(literal!("ready"));
+                    ParserState::Live(remainder)
+                }
+                Ok(None) => {
+                    handle.signal(literal!("empty"));
                     return handle.break_();
                 }
                 Err(err) => {
+                    handle.signal(literal!("ready"));
+                    ParserState::Poison(err)
+                }
+            },
+            ParserState::Poison(err) => {
+                handle.signal(literal!("ready"));
+                ParserState::Poison(err)
+            }
+        };
+
+        'inner: loop {
+            state = match state {
+                ParserState::Poison(err) => {
+                    match handle.case().await.as_str() {
+                        "close" | "remainder" | "char" => {}
+                        "minMax" | "minMaxEnd" => {
+                            let _ = StringPattern::readback(handle.receive()).await;
+                            let _ = StringPattern::readback(handle.receive()).await;
+                        }
+                        _ => unreachable!(),
+                    }
                     handle.signal(literal!("err"));
                     return R::provide_err(handle, err).await;
                 }
-            },
 
-            "char" => {
-                let mut chars = remainder.chars();
-                match chars.next().await {
-                    Ok(Some((_, len, ch))) => {
-                        drop(chars);
-                        handle.signal(literal!("char"));
-                        handle.send().provide_char(ch);
-                        remainder.pop_chars(len);
-                    }
-                    Ok(None) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("ok"));
-                        return handle.break_();
-                    }
-                    Err(err) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("err"));
-                        return R::provide_err(handle, err).await;
-                    }
-                }
-            }
-
-            "match" => {
-                let prefix = StringPattern::readback(handle.receive()).await;
-                let suffix = StringPattern::readback(handle.receive()).await;
-                match remainder.chars().next().await {
-                    Ok(Some(_)) => {}
-                    Ok(None) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("ok"));
-                        return handle.break_();
-                    }
-                    Err(err) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("err"));
-                        return R::provide_err(handle, err).await;
-                    }
-                }
-
-                let mut m = StringMachine::start(Box::new(StringPattern::Concat(prefix, suffix)));
-
-                let mut best_match = None;
-                let mut chars = remainder.chars();
-                loop {
-                    let (pos, len, ch) = match chars.next().await {
-                        Ok(Some((pos, len, ch))) => (pos, len, ch),
-                        Ok(None) => break,
+                ParserState::Live(mut remainder) => match handle.case().await.as_str() {
+                    "close" => match remainder.close().await {
+                        Ok(()) => {
+                            handle.signal(literal!("ok"));
+                            return handle.break_();
+                        }
                         Err(err) => {
-                            handle.signal(literal!("end"));
                             handle.signal(literal!("err"));
                             return R::provide_err(handle, err).await;
                         }
-                    };
-                    match (m.leftmost_feasible_split(pos), best_match) {
-                        (Some(fi), Some((bi, _))) if fi > bi => break,
-                        (None, _) => break,
-                        _ => {}
-                    }
-                    m.advance(pos, len, ch);
-                    match (m.leftmost_accepting_split(), best_match) {
-                        (Some(ai), Some((bi, _))) if ai <= bi => best_match = Some((ai, pos + len)),
-                        (Some(ai), None) => best_match = Some((ai, pos + len)),
-                        _ => {}
-                    }
-                }
-                drop(chars);
+                    },
 
-                match best_match {
-                    Some((i, j)) => {
-                        handle.signal(literal!("match"));
-                        handle.send().provide_string(remainder.pop_chars(i));
-                        handle.send().provide_string(remainder.pop_chars(j - i));
-                    }
-                    None => {
-                        handle.signal(literal!("fail"));
-                    }
-                }
-            }
-
-            "matchEnd" => {
-                let prefix = StringPattern::readback(handle.receive()).await;
-                let suffix = StringPattern::readback(handle.receive()).await;
-                match remainder.chars().next().await {
-                    Ok(Some(_)) => {}
-                    Ok(None) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("ok"));
-                        return handle.break_();
-                    }
-                    Err(err) => {
-                        handle.signal(literal!("end"));
-                        handle.signal(literal!("err"));
-                        return R::provide_err(handle, err).await;
-                    }
-                }
-
-                let mut m = StringMachine::start(Box::new(StringPattern::Concat(prefix, suffix)));
-
-                let mut chars = remainder.chars();
-                loop {
-                    let (pos, len, ch) = match chars.next().await {
-                        Ok(Some((pos, len, ch))) => (pos, len, ch),
-                        Ok(None) => break,
-                        Err(err) => {
-                            handle.signal(literal!("end"));
-                            handle.signal(literal!("err"));
-                            return R::provide_err(handle, err).await;
-                        }
-                    };
-                    if m.accepts() == None {
-                        break;
-                    }
-                    m.advance(pos, len, ch);
-                }
-                drop(chars);
-
-                match m.leftmost_accepting_split() {
-                    Some(i) => {
-                        let left = remainder.pop_chars(i);
-                        let right = match remainder.remaining_chars().await {
-                            Ok(string) => string,
+                    "char" => {
+                        let mut chars = remainder.chars();
+                        match chars.next().await {
+                            Ok(Some((_, len, ch))) => {
+                                drop(chars);
+                                handle.signal(literal!("ok"));
+                                handle.send().provide_char(ch);
+                                remainder.pop_chars(len);
+                                ParserState::Live(remainder)
+                            }
+                            Ok(None) => unreachable!("parser attempt should be non-empty"),
                             Err(err) => {
-                                handle.signal(literal!("end"));
                                 handle.signal(literal!("err"));
                                 return R::provide_err(handle, err).await;
                             }
-                        };
-                        handle.signal(literal!("match"));
-                        handle.send().provide_string(left);
-                        handle.send().provide_string(right);
-                        return handle.break_();
+                        }
                     }
-                    None => {
-                        handle.signal(literal!("fail"));
+
+                    "minMax" => {
+                        let prefix = StringPattern::readback(handle.receive()).await;
+                        let suffix = StringPattern::readback(handle.receive()).await;
+                        let mut m =
+                            StringMachine::start(Box::new(StringPattern::Concat(prefix, suffix)));
+
+                        let mut best_match = None;
+                        let mut chars = remainder.chars();
+                        loop {
+                            let (pos, len, ch) = match chars.next().await {
+                                Ok(Some((pos, len, ch))) => (pos, len, ch),
+                                Ok(None) => break,
+                                Err(err) => {
+                                    handle.signal(literal!("err"));
+                                    return R::provide_err(handle, err).await;
+                                }
+                            };
+                            match (m.leftmost_feasible_split(pos), best_match) {
+                                (Some(fi), Some((bi, _))) if fi > bi => break,
+                                (None, _) => break,
+                                _ => {}
+                            }
+                            m.advance(pos, len, ch);
+                            match (m.leftmost_accepting_split(), best_match) {
+                                (Some(ai), Some((bi, _))) if ai <= bi => {
+                                    best_match = Some((ai, pos + len))
+                                }
+                                (Some(ai), None) => best_match = Some((ai, pos + len)),
+                                _ => {}
+                            }
+                        }
+                        drop(chars);
+
+                        match best_match {
+                            Some((i, j)) => {
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("match"));
+                                handle.send().provide_string(remainder.pop_chars(i));
+                                handle.send().provide_string(remainder.pop_chars(j - i));
+                                ParserState::Live(remainder)
+                            }
+                            None => {
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("fail"));
+                                state = ParserState::Live(remainder);
+                                continue 'inner;
+                            }
+                        }
                     }
-                }
-            }
-            "remainder" => match remainder.remaining_chars().await {
-                Ok(string) => {
-                    handle.signal(literal!("ok"));
-                    return handle.provide_string(string);
-                }
-                Err(err) => {
-                    handle.signal(literal!("err"));
-                    return R::provide_err(handle, err).await;
-                }
-            },
-            _ => unreachable!(),
+
+                    "minMaxEnd" => {
+                        let prefix = StringPattern::readback(handle.receive()).await;
+                        let suffix = StringPattern::readback(handle.receive()).await;
+                        let mut m =
+                            StringMachine::start(Box::new(StringPattern::Concat(prefix, suffix)));
+
+                        let mut chars = remainder.chars();
+                        loop {
+                            let (pos, len, ch) = match chars.next().await {
+                                Ok(Some((pos, len, ch))) => (pos, len, ch),
+                                Ok(None) => break,
+                                Err(err) => {
+                                    handle.signal(literal!("err"));
+                                    return R::provide_err(handle, err).await;
+                                }
+                            };
+                            if m.accepts() == None {
+                                break;
+                            }
+                            m.advance(pos, len, ch);
+                        }
+                        drop(chars);
+
+                        match m.leftmost_accepting_split() {
+                            Some(i) => {
+                                let left = remainder.pop_chars(i);
+                                let right = match remainder.remaining_chars().await {
+                                    Ok(string) => string,
+                                    Err(err) => {
+                                        handle.signal(literal!("err"));
+                                        return R::provide_err(handle, err).await;
+                                    }
+                                };
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("match"));
+                                handle.send().provide_string(left);
+                                handle.send().provide_string(right);
+                                return handle.break_();
+                            }
+                            None => {
+                                handle.signal(literal!("ok"));
+                                handle.signal(literal!("fail"));
+                                state = ParserState::Live(remainder);
+                                continue 'inner;
+                            }
+                        }
+                    }
+
+                    "remainder" => match remainder.remaining_chars().await {
+                        Ok(string) => {
+                            handle.signal(literal!("ok"));
+                            return handle.provide_string(string);
+                        }
+                        Err(err) => {
+                            handle.signal(literal!("err"));
+                            return R::provide_err(handle, err).await;
+                        }
+                    },
+
+                    _ => unreachable!(),
+                },
+            };
+
+            continue 'outer;
         }
     }
 }

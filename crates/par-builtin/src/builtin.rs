@@ -143,8 +143,12 @@ const CORE_SOURCE_FILES: &[BuiltinSourceFile] = &[
         source: include_str!("../packages/core/src/Ordering.par"),
     },
     BuiltinSourceFile {
-        relative_path_from_src: "Result.par",
-        source: include_str!("../packages/core/src/Result.par"),
+        relative_path_from_src: "Stream.par",
+        source: include_str!("../packages/core/src/Stream.par"),
+    },
+    BuiltinSourceFile {
+        relative_path_from_src: "Try.par",
+        source: include_str!("../packages/core/src/Try.par"),
     },
     BuiltinSourceFile {
         relative_path_from_src: "String.par",

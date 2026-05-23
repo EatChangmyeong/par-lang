@@ -1,11 +1,14 @@
 export module String
 
 import {
+  Bool
   Bytes
   Char
   List
   Nat
-  Result
+  Option
+  Stream
+  Try
 }
 
 export {
@@ -25,43 +28,47 @@ export {
   // The error type comes from the underlying source: `either {}` (impossible) when parsing
   // a plain string, or the reader's error type when parsing from a `Bytes.Reader`.
   //
-  // Operations:
+  // Cases:
+  // - `.empty!` — input is cleanly exhausted.
+  // - `.ready parser` — input is available, or the underlying source has failed. In the latter
+  //   case, every parser operation returns `.err`.
+  //
+  // Parser operations:
   // - `.close` — close the parser, returning any source error.
   // - `.remainder` — consume the parser and return all remaining unparsed input.
-  // - `.char` — read the next character. Returns `.end` if input is exhausted,
-  //   or `.char(c)` with the character.
-  // - `.match(prefix, suffix)` — find the leftmost split where `prefix` matches the left part
+  // - `.char` — read the next character.
+  // - `.minMax(prefix, suffix)` — find the leftmost split where `prefix` matches the left part
   //   and `suffix` matches the longest possible right part. Returns `.match(prefix_str, suffix_str)`
-  //   on success, `.fail` if no match (parser position unchanged), or `.end` if input is empty.
-  // - `.matchEnd(prefix, suffix)` — like `.match`, but the suffix extends to the end of input.
+  //   on success, or `.fail` if no match (parser position unchanged).
+  // - `.minMaxEnd(prefix, suffix)` — like `.minMax`, but the suffix extends to the end of input.
   //   Terminates the parser on success.
   //
   // Use `.begin`/`.loop` (from the `recursive` wrapper) to iterate over multiple matches.
   //
   // ```par
-  // let r = String.Parser("Hello, world!")
-  // r.match(.str "Hello", .str ", ").case {
-  //   .match(hello, comma) r => ...
-  //   .fail r => ...
-  //   .end _ => ...
+  // String.Parse("Hello, world!").begin.case {
+  //   .empty! => ...
+  //   .ready r => r.minMax(.str "Hello", .str ", ").case {
+  //     .err e => ...
+  //     .ok .match(hello, comma) r => ...
+  //     .ok .fail r => ...
+  //   }
   // }
   // ```
-  type Parser<e> = recursive iterative@attempt choice {
-    .close => Result<e, !>,
-    .remainder => Result<e, String>,
-    .char => either {
-      .end Result<e, !>,
-      .char(Char) self,
-    },
-    .match(Pattern, Pattern) => either {
-      .end Result<e, !>,
-      .fail self@attempt,
-      .match(String, String) self,
-    },
-    .matchEnd(Pattern, Pattern) => either {
-      .end Result<e, !>,
-      .fail self@attempt,
-      .match(String, String)!,
+  type Parser<e> = recursive either {
+    .empty!,
+    .ready iterative@attempt choice {
+      .close => Try<e, !>,
+      .remainder => Try<e, String>,
+      .char => Try<e, (Char) self>,
+      .minMax(Pattern, Pattern) => Try<e, either {
+        .match(String, String) self,
+        .fail self@attempt,
+      }>,
+      .minMaxEnd(Pattern, Pattern) => Try<e, either {
+        .match(String, String)!,
+        .fail self@attempt,
+      }>,
     },
   }
 
@@ -104,19 +111,73 @@ export {
   // Unicode replacement character.
   dec FromBytes : [Bytes] String
 
+  // Converts a string to lowercase.
+  dec ToLower : [String] String
+
+  // Converts a string to uppercase.
+  dec ToUpper : [String] String
+
   // Creates a new string `Builder`.
   dec Builder : Builder
 
   // Creates a `Parser` from a string. The error type is `either {}` (impossible).
-  dec Parser : [String] Parser<either {}>
+  dec Parse : [String] Parser<either {}>
 
   // Creates a string `Parser` from a `Bytes.Reader`.
   // The error type matches the reader's error type.
-  dec ParserFromReader : <e>[Bytes.Reader<e>] Parser<e>
+  dec ParseReader : <e>[Bytes.Reader<e>] Parser<e>
 
-  // Splits a parser's remaining input into lines (separated by `\n`).
-  // Returns a fallible list that may end with a source error.
-  dec Lines : <e>[Parser<e>] List.Fallible<e, String>
+  // Consumes a parser and returns all remaining unparsed input.
+  dec Remainder : <e>[Parser<e>] Try<e, String>
+
+  // Closes a parser, returning any source error.
+  dec Close : <e>[Parser<e>] Try<e, !>
+
+  // Splits a parser's remaining input into lines separated by `\n` or `\r\n`.
+  dec Lines : <e>[Parser<e>] Stream<e, String>
+
+  // Splits a parser's remaining input on a string separator.
+  dec SplitBy : <e>[Parser<e>] [String] Stream<e, String>
+
+  // Splits a parser's remaining input on a string pattern.
+  dec SplitByPattern : <e>[Parser<e>] [Pattern] Stream<e, String>
+
+  // Trims whitespace from both ends of a string.
+  dec Trim : [String] String
+
+  // Trims the given pattern once from the start of a string.
+  dec TrimLeft : [String, Pattern] String
+
+  // Trims the given pattern once from the end of a string.
+  dec TrimRight : [String, Pattern] String
+
+  // Returns `.true!` if a string starts with a pattern.
+  dec StartsWith : [String, Pattern] Bool
+
+  // Returns `.true!` if a string ends with a pattern.
+  dec EndsWith : [String, Pattern] Bool
+
+  // Returns `.true!` if a whole string matches a pattern.
+  dec Matches : [String, Pattern] Bool
+
+  // Returns the first substring matched by a pattern, if one exists.
+  dec Find : [String, Pattern] Option<String>
+
+  // Replaces non-overlapping occurrences of a string with another string.
+  //
+  // ```par
+  // String.Replace("red blue red", "red", "green")
+  // // = "green blue green"
+  // ```
+  dec Replace : [String, String, String] String
+
+  // Replaces non-overlapping pattern matches using a replacement function.
+  //
+  // ```par
+  // String.ReplacePattern("a12b345", .repeat1.one.ascii.digit!, box [_] "#")
+  // // = "a#b#"
+  // ```
+  dec ReplacePattern : [String, Pattern, box [String] String] String
 
   // Joins a list of strings with a separator between each element.
   //
@@ -131,24 +192,134 @@ export {
   // String.Concat(*("Hello", ", ", "world!"))  // = "Hello, world!"
   // ```
   dec Concat : [List<String>] String
+
+  // Reads all bytes from a `Reader` and decodes them into a `String`,
+  // replacing invalid sequences with the Unicode replacement character.
+  dec ReadAll : <e>[Bytes.Reader<e>] Try<e, String>
 }
 
 def Quote = external
 
 def FromBytes = external
 
+def ToLower = external
+
+def ToUpper = external
+
 def Builder = external
 
-def Parser = external
+def Parse = external
 
-def ParserFromReader = external
+def ParseReader = external
 
-def Lines = <e>[parser]
-  catch e => .end .err e in
-  parser.begin.match(.repeat.one.any!, .str "\n").case {
-    .end try ! => .end .ok!,
-    .fail parser => let try r = parser.remainder in .item(r) .end .ok!,
-    .match(line, _) parser => .item(line) parser.loop,
+def Remainder = <e>[parser] parser.case {
+  .empty! => .ok "",
+  .ready parser => parser.remainder,
+}
+
+def Close = <e>[parser] parser.case {
+  .empty! => .ok!,
+  .ready parser => parser.close,
+}
+
+def Lines = <e>[parser] parser->SplitByPattern(.or *(.str "\r\n", .str "\n"))
+
+def SplitBy = <e>[parser] [separator] parser->SplitByPattern(.str separator)
+
+def SplitByPattern = <e>[parser] [separator] parser.begin.case {
+  .empty! => .end.ok!,
+  .ready parser => parser.minMax(.repeat.one.any!, separator).case {
+    .err e => .end.err e,
+    .ok result => result.case {
+      .fail parser => Remainder(.ready parser).case {
+        .err e => .end.err e,
+        .ok chunk => .item case {
+          .cancel => .ok!,
+          .get => (chunk) .end.ok!,
+        },
+      },
+      .match(chunk, _) parser => .item case {
+        .cancel => parser.begin.case {
+          .empty! => .ok!,
+          .ready parser => parser.close,
+        },
+        .get => (chunk) parser.loop,
+      },
+    },
+  },
+}
+
+def Trim = [string]
+  string
+    ->TrimLeft(.repeat.one.whitespace!)
+    ->TrimRight(.repeat.one.whitespace!)
+
+def TrimLeft = [string, pattern] Parse(string).begin.case {
+  .empty! => string,
+  .ready parser => parser.minMax(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in string,
+    .match(_, _) parser => parser->Remainder->Try.Ok,
+  },
+}
+
+def TrimRight = [string, pattern] Parse(string).begin.case {
+  .empty! => string,
+  .ready parser => parser.minMaxEnd(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in string,
+    .match(trimmed, _)! => trimmed,
+  },
+}
+
+def StartsWith = [string, pattern] Parse(string).case {
+  .empty! => pattern->ContainsEmpty,
+  .ready parser => parser.minMax(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _) parser => let _ = parser->Remainder->Try.Ok in .true!,
+  },
+}
+
+def EndsWith = [string, pattern] Parse(string).case {
+  .empty! => pattern->ContainsEmpty,
+  .ready parser => parser.minMaxEnd(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _)! => .true!,
+  },
+}
+
+def Matches = [string, pattern] Parse(string).case {
+  .empty! => pattern->ContainsEmpty,
+  .ready parser => parser.minMaxEnd(.empty!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .false!,
+    .match(_, _)! => .true!,
+  }
+}
+
+def Find = [string, pattern] Parse(string).case {
+  .empty! => pattern->ContainsEmpty.case {
+    .true! => .some "",
+    .false! => .none!,
+  },
+  .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .none!,
+    .match(_, found) parser => let _ = parser->Remainder->Try.Ok in .some found,
+  },
+}
+
+def Replace = [string, target, replacement]
+  string->ReplacePattern(.str target, box [_] replacement)
+
+def ReplacePattern = [string, pattern, replace]
+  let builder = Builder in
+  Parse(string).begin.case {
+    .empty! => builder.build,
+    .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+      .fail parser => do {
+        builder.add(parser.remainder->Try.Ok)
+      } in builder.build,
+      .match(before, found) parser => do {
+        builder.add(before).add(replace(found))
+      } in parser.loop,
+    },
   }
 
 def Join = [list, sep]
@@ -173,3 +344,22 @@ def Concat = [list]
       builder.add(v)
     } in list.loop,
   }
+
+def ReadAll = <e>[reader] ParseReader(reader)->Remainder
+
+// Helpers
+
+dec ContainsEmpty : [Pattern] Bool
+def ContainsEmpty = [pattern] pattern.begin.case {
+  .empty! => .true!,
+  .str s => s == "",
+  .one _ => .false!,
+  .non _ => .false!,
+  .min n => n == 0,
+  .max _ => .true!,
+  .repeat _ => .true!,
+  .repeat1 p => p.loop,
+  .concat ps => ps->List.All(box [p] p.loop),
+  .and ps => ps->List.All(box [p] p.loop),
+  .or ps => ps->List.Any(box [p] p.loop),
+}

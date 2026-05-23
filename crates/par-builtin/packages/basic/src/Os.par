@@ -1,7 +1,7 @@
 // Operating system interfaces for paths, files, directories, standard streams,
 // and environment variables.
 //
-// Most operations return `Result<Os.Error, ...>`.
+// Most operations return `Try<Os.Error, ...>`.
 export module Os
 
 import {
@@ -9,7 +9,7 @@ import {
   @core/Bytes
   @core/List
   @core/Option
-  @core/Result
+  @core/Try
   @core/String
 }
 
@@ -52,25 +52,37 @@ export {
   dec Stderr : Writer
 
   // Opens a file for reading.
-  dec OpenFile : [Path] Result<Error, Reader>
+  dec OpenFile : [Path] Try<Error, Reader>
 
   // Creates or replaces a file for writing. Truncates if the file already exists.
-  dec CreateOrReplaceFile : [Path] Result<Error, Writer>
+  dec CreateOrReplaceFile : [Path] Try<Error, Writer>
 
   // Creates a new file for writing. Fails if the file already exists.
-  dec CreateNewFile : [Path] Result<Error, Writer>
+  dec CreateNewFile : [Path] Try<Error, Writer>
 
   // Opens an existing file for appending. Fails if the file does not exist.
-  dec AppendToFile : [Path] Result<Error, Writer>
+  dec AppendToFile : [Path] Try<Error, Writer>
 
   // Opens or creates a file for appending.
-  dec CreateOrAppendToFile : [Path] Result<Error, Writer>
+  dec CreateOrAppendToFile : [Path] Try<Error, Writer>
 
   // Creates a directory and all necessary parent directories.
-  dec CreateDir : [Path] Result<Error, !>
+  dec CreateDir : [Path] Try<Error, !>
+
+  // Removes a file.
+  dec RemoveFile : [Path] Try<Error, !>
+
+  // Removes an empty directory.
+  dec RemoveDir : [Path] Try<Error, !>
+
+  // Moves or renames a file.
+  dec MoveFile : [Path, Path] Try<Error, !>
+
+  // Moves or renames a directory.
+  dec MoveDir : [Path, Path] Try<Error, !>
 
   // Lists the entries of a directory, returning a list of paths sorted by name.
-  dec ListDir : [Path] Result<Error, List<Path>>
+  dec ListDir : [Path] Try<Error, List<Path>>
 
   // Recursively traverses a directory tree, returning a nested structure of files and
   // subdirectories sorted by name.
@@ -78,7 +90,7 @@ export {
   // - `.end!` — no more entries.
   // - `.file(path) rest` — a file, followed by more entries.
   // - `.dir(path, children) rest` — a subdirectory with its nested contents, followed by more entries.
-  dec TraverseDir : [Path] Result<Error, recursive either {
+  dec TraverseDir : [Path] Try<Error, recursive either {
     .end!,
     .file(Path) self,
     .dir(Path, self) self,
@@ -107,6 +119,14 @@ def AppendToFile = external
 def CreateOrAppendToFile = external
 
 def CreateDir = external
+
+def RemoveFile = external
+
+def RemoveDir = external
+
+def MoveFile = external
+
+def MoveDir = external
 
 def ListDir = external
 

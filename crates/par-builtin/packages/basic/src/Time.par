@@ -6,7 +6,11 @@ import {
 
 export {
   // Returns the current time as milliseconds since the Unix epoch.
-  dec Now : [!] Nat
+  dec Now : Nat
 }
 
-def Now = external
+dec Now_ : [!] Nat
+
+def Now_ = external
+
+def Now = Now_(!)
