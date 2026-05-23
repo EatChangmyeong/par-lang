@@ -271,7 +271,7 @@ def TrimRight = [string, pattern] Parse(string).begin.case {
 }
 
 def StartsWith = [string, pattern] Parse(string).case {
-  .empty! => .false!,
+  .empty! => pattern->ContainsEmpty,
   .ready parser => parser.minMax(.empty!, pattern)->Try.Ok.case {
     .fail parser => let ! = parser.close->Try.Ok in .false!,
     .match(_, _) parser => let _ = parser->Remainder->Try.Ok in .true!,
@@ -279,7 +279,7 @@ def StartsWith = [string, pattern] Parse(string).case {
 }
 
 def EndsWith = [string, pattern] Parse(string).case {
-  .empty! => .false!,
+  .empty! => pattern->ContainsEmpty,
   .ready parser => parser.minMaxEnd(.repeat.one.any!, pattern)->Try.Ok.case {
     .fail parser => let ! = parser.close->Try.Ok in .false!,
     .match(_, _)! => .true!,
@@ -295,7 +295,10 @@ def Matches = [string, pattern] Parse(string).case {
 }
 
 def Find = [string, pattern] Parse(string).case {
-  .empty! => .none!,
+  .empty! => pattern->ContainsEmpty.case {
+    .true! => .some "",
+    .false! => .none!,
+  },
   .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
     .fail parser => let ! = parser.close->Try.Ok in .none!,
     .match(_, found) parser => let _ = parser->Remainder->Try.Ok in .some found,
