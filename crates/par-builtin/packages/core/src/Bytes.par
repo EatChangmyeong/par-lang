@@ -160,6 +160,9 @@ export {
   // Returns the first byte sequence matched by a pattern, if one exists.
   dec Find : [Bytes, Pattern] Option<Bytes>
 
+  // Returns the first match together with the bytes before and after it.
+  dec FindAndSplit : [Bytes, Pattern] Option<(Bytes, Bytes, Bytes)!>
+
   // Replaces non-overlapping occurrences of a byte sequence with another byte sequence.
   //
   // ```par
@@ -305,6 +308,18 @@ def Find = [bytes, pattern] Parse(bytes).case {
   .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
     .fail parser => let ! = parser.close->Try.Ok in .none!,
     .match(_, found) parser => let _ = parser->Remainder->Try.Ok in .some found,
+  },
+}
+
+def FindAndSplit = [bytes, pattern] Parse(bytes).case {
+  .empty! => pattern->ContainsEmpty.case {
+    .true! => .some(<<>>, <<>>, <<>>)!,
+    .false! => .none!,
+  },
+  .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .none!,
+    .match(before, found) parser =>
+      .some(before, found, parser->Remainder->Try.Ok)!,
   },
 }
 

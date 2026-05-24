@@ -163,6 +163,9 @@ export {
   // Returns the first substring matched by a pattern, if one exists.
   dec Find : [String, Pattern] Option<String>
 
+  // Returns the first match together with the text before and after it.
+  dec FindAndSplit : [String, Pattern] Option<(String, String, String)!>
+
   // Replaces non-overlapping occurrences of a string with another string.
   //
   // ```par
@@ -192,6 +195,9 @@ export {
   // String.Concat(*("Hello", ", ", "world!"))  // = "Hello, world!"
   // ```
   dec Concat : [List<String>] String
+
+  // Splits a string into a list of Unicode characters.
+  dec Chars : [String] List<Char>
 
   // Reads all bytes from a `Reader` and decodes them into a `String`,
   // replacing invalid sequences with the Unicode replacement character.
@@ -305,6 +311,18 @@ def Find = [string, pattern] Parse(string).case {
   },
 }
 
+def FindAndSplit = [string, pattern] Parse(string).case {
+  .empty! => pattern->ContainsEmpty.case {
+    .true! => .some("", "", "")!,
+    .false! => .none!,
+  },
+  .ready parser => parser.minMax(.repeat.one.any!, pattern)->Try.Ok.case {
+    .fail parser => let ! = parser.close->Try.Ok in .none!,
+    .match(before, found) parser =>
+      .some(before, found, parser->Remainder->Try.Ok)!,
+  },
+}
+
 def Replace = [string, target, replacement]
   string->ReplacePattern(.str target, box [_] replacement)
 
@@ -344,6 +362,13 @@ def Concat = [list]
       builder.add(v)
     } in list.loop,
   }
+
+def Chars = [string] Parse(string).begin.case {
+  .empty! => .end!,
+  .ready parser => do {
+    let (char) parser = parser.char->Try.Ok
+  } in .item(char) parser.loop,
+}
 
 def ReadAll = <e>[reader] ParseReader(reader)->Remainder
 

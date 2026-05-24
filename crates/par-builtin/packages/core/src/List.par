@@ -44,6 +44,9 @@ export {
   // Maps each element to a list, then concatenates the result.
   dec FlatMap : <a>[List<a>] <b>[box [a] List<b>] List<b>
 
+  // Maps each element to an optional value, keeping only the present results.
+  dec FilterMap : <a>[List<a>] <b>[box [a] Option<b>] List<b>
+
   // Keeps the elements for which the test function returns `.true!`.
   dec Filter : <a: box>[List<a>] [box [a] Bool] List<a>
 
@@ -106,6 +109,18 @@ export {
   // Drops the requested number of elements from the start of a list.
   dec Drop : <a: box>[List<a>] [Nat] List<a>
 
+  // Takes elements from the start while the test function returns `.true!`.
+  dec TakeWhile : <a: box>[List<a>] [box [a] Bool] List<a>
+
+  // Drops elements from the start while the test function returns `.true!`.
+  dec DropWhile : <a: box>[List<a>] [box [a] Bool] List<a>
+
+  // Returns the smallest element, or `.none!` for an empty list.
+  dec Min : <a: data>[List<a>] Option<a>
+
+  // Returns the largest element, or `.none!` for an empty list.
+  dec Max : <a: data>[List<a>] Option<a>
+
   // Sorts a list in ascending data order. Equal keys keep their original order.
   dec Sort : <a: data>[List<a>] List<a>
 
@@ -145,6 +160,14 @@ def FlatMap = <a>[list] <b>[f] list.begin.case {
   .item(v) list => f(v).begin@flat.case {
     .end! => list.loop,
     .item(v) flat => .item(v) flat.loop@flat,
+  },
+}
+
+def FilterMap = <a>[list] <b>[f] list.begin.case {
+  .end! => .end!,
+  .item(v) list => f(v).case {
+    .some v => .item(v) list.loop,
+    .none! => list.loop,
   },
 }
 
@@ -267,6 +290,46 @@ def Drop = <a: box>[list] [n]
       .item(_) list => next.loop,
     },
   }
+
+def TakeWhile = <a: box>[list] [f] list.begin.case {
+  .end! => .end!,
+  .item(v) list => f(v).case {
+    .true! => .item(v) list.loop,
+    .false! => .end!,
+  },
+}
+
+def DropWhile = <a: box>[list] [f] list.begin.case {
+  .end! => .end!,
+  .item(v) list => f(v).case {
+    .true! => list.loop,
+    .false! => .item(v) list,
+  },
+}
+
+def Min = <a: data>[list] list.case {
+  .end! => .none!,
+  .item(best) list => .some {
+    list.begin.case {
+      .end! => best,
+      .item(v) list => do {
+        if v < best => { let best = v }
+      } in list.loop,
+    }
+  },
+}
+
+def Max = <a: data>[list] list.case {
+  .end! => .none!,
+  .item(best) list => .some {
+    list.begin.case {
+      .end! => best,
+      .item(v) list => do {
+        if v > best => { let best = v }
+      } in list.loop,
+    }
+  },
+}
 
 def Sort = external
 
