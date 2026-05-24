@@ -1,4 +1,6 @@
 use arcstr::literal;
+use num_bigint::BigUint;
+use num_traits::ToPrimitive;
 
 use par_core::frontend::ExternalTypeDef;
 use par_core::frontend::{PrimitiveType, Type};
@@ -31,6 +33,16 @@ inventory::submit!(ExternalDef {
         package: PackageRef::CORE,
         path: &[],
         module: "Byte",
+        name: "FromCode"
+    },
+    f: |handle| Box::pin(byte_from_code(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::CORE,
+        path: &[],
+        module: "Byte",
         name: "Is"
     },
     f: |handle| Box::pin(byte_is(handle)),
@@ -39,6 +51,12 @@ inventory::submit!(ExternalDef {
 async fn byte_code(mut handle: Handle) {
     let c = handle.receive().byte().await;
     handle.provide_nat(c.into())
+}
+
+async fn byte_from_code(mut handle: Handle) {
+    let n = handle.receive().nat().await;
+    let byte = (n % BigUint::from(256u32)).to_u8().unwrap();
+    handle.provide_byte(byte);
 }
 
 async fn byte_is(mut handle: Handle) {

@@ -31,6 +31,10 @@ export {
   // Returns the Unicode code point of a character as a natural number.
   dec Code : [Char] Nat
 
+  // Converts a Unicode code point to a character.
+  // Invalid code points become the Unicode replacement character.
+  dec FromCode : [Nat] Char
+
   // Converts a character to lowercase.
   dec ToLower : [Char] Char
 
@@ -42,6 +46,8 @@ export {
 }
 
 def Code = external
+
+def FromCode = external
 
 def ToLower = external
 

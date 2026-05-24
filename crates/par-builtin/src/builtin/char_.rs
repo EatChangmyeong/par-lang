@@ -1,5 +1,6 @@
 use arcstr::literal;
 use num_bigint::BigUint;
+use num_traits::ToPrimitive;
 
 use par_core::frontend::{ExternalTypeDef, PrimitiveType, Type};
 use par_core::source::Span;
@@ -24,6 +25,16 @@ inventory::submit!(ExternalDef {
         name: "Code"
     },
     f: |handle| Box::pin(char_code(handle)),
+});
+
+inventory::submit!(ExternalDef {
+    path: DefinitionRef {
+        package: PackageRef::CORE,
+        path: &[],
+        module: "Char",
+        name: "FromCode"
+    },
+    f: |handle| Box::pin(char_from_code(handle)),
 });
 
 inventory::submit!(ExternalDef {
@@ -59,6 +70,15 @@ inventory::submit!(ExternalDef {
 async fn char_code(mut handle: Handle) {
     let c = handle.receive().char().await;
     handle.provide_nat(BigUint::from(c as u32));
+}
+
+async fn char_from_code(mut handle: Handle) {
+    let code = handle.receive().nat().await;
+    let ch = code
+        .to_u32()
+        .and_then(char::from_u32)
+        .unwrap_or(char::REPLACEMENT_CHARACTER);
+    handle.provide_char(ch);
 }
 
 async fn char_to_lower(mut handle: Handle) {

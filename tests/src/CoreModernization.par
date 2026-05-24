@@ -3,6 +3,7 @@ module CoreModernization
 import {
   @core/Bool
   @core/BoxMap
+  @core/Byte
   @core/Bytes
   @core/Char
   @core/Float
@@ -57,21 +58,34 @@ def TestListConstraintsAndEquality : [Test] ! = [test] do {
   let zipped = firstTwo->List.Zip(*("one", "two", "three"))
   let reversed = values->List.Reverse
   let found = values->List.Find(box [n] n > 2)
+  let doubledEvens = values->List.FilterMap(box [n] if {
+    n / 2 * 2 == n => .some {n * 2},
+    else => .none!,
+  })
+  let takeUnderThree = values->List.TakeWhile(box [n] n < 3)
+  let dropUnderThree = values->List.DropWhile(box [n] n < 3)
   let enumerated = values->List.Enumerate
   let sum = {0}->List.ForEach(values, box [sum, n] sum + n)
   let builder = List.Builder(type Nat)
   builder->List.ForEach(values, box [b, n] b.add(n * 2))
   let doubled = builder.build
+  let empty: List<Nat> = *()
 
   test
     .assert("List equality uses generic data equality", values == {*(1, 2, 3, 4)})
     .assert("List.Filter accepts a box-constrained element type", evens == {*(2, 4)})
+    .assert("List.FilterMap keeps present mapped values", doubledEvens == {*(4, 8)})
     .assert("List.Length accepts a box-constrained element type", values->List.Length == 4)
     .assert("List.Zip accepts box-constrained element types", zipped == {*((1) "one", (2) "two")})
     .assert("List.All accepts a box-constrained element type", values->List.All(box [n] n > 0))
     .assert("List.Any accepts a box-constrained element type", values->List.Any(box [n] n == 3))
     .assert("List.Take accepts a box-constrained element type", firstTwo == {*(1, 2)})
     .assert("List.Drop accepts a box-constrained element type", withoutTwo == {*(3, 4)})
+    .assert("List.TakeWhile keeps the matching prefix", takeUnderThree == {*(1, 2)})
+    .assert("List.DropWhile skips the matching prefix", dropUnderThree == {*(3, 4)})
+    .assert("List.Min returns the smallest element", values->List.Min is .some n and n == 1)
+    .assert("List.Max returns the largest element", values->List.Max is .some n and n == 4)
+    .assert("List.Min returns none for an empty list", empty->List.Min is .none!)
     .assert("List.Reverse reverses list order", reversed == {*(4, 3, 2, 1)})
     .assert("List.Find returns the first matching element", found is .some n and n == 3)
     .assert("List.Enumerate pairs values with indices", enumerated == {*((0) 1, (1) 2, (2) 3, (3) 4)})
@@ -130,6 +144,24 @@ def TestStreamCombinators : [Test] ! = [test] do {
     ->Stream.ToList
     ->Try.Ok
 
+  let enumerated = numbers
+    ->Stream.FromList
+    ->Stream.Enumerate
+    ->Stream.ToList
+    ->Try.Ok
+
+  let takeUnderThree = numbers
+    ->Stream.FromList
+    ->Stream.TakeWhile(box [n] n < 3)
+    ->Stream.ToList
+    ->Try.Ok
+
+  let dropUnderThree = numbers
+    ->Stream.FromList
+    ->Stream.DropWhile(box [n] n < 3)
+    ->Stream.ToList
+    ->Try.Ok
+
   let (status) total = {0}->Stream.ForEach(
     numbers->Stream.FromList,
     box [sum, n] sum + n,
@@ -139,6 +171,9 @@ def TestStreamCombinators : [Test] ! = [test] do {
     .assert("Stream.Map and Stream.Filter compose", transformed == {*(6, 8)})
     .assert("Stream.Take limits a stream", firstTwo == {*(1, 2)})
     .assert("Stream.Drop skips a prefix", withoutTwo == {*(3, 4)})
+    .assert("Stream.Enumerate pairs values with indices", enumerated == {*((0) 1, (1) 2, (2) 3, (3) 4)})
+    .assert("Stream.TakeWhile keeps the matching prefix", takeUnderThree == {*(1, 2)})
+    .assert("Stream.DropWhile skips the matching prefix", dropUnderThree == {*(3, 4)})
     .assert("Stream.ForEach folds while preserving status", status is .ok! and total == 10)
     .assert("Stream.All checks every item", numbers->Stream.FromList->Stream.All(box [n] n > 0)->Try.Ok)
     .assert("Stream.Any short-circuits on a match", numbers->Stream.FromList->Stream.Any(box [n] n == 3)->Try.Ok)
@@ -213,12 +248,18 @@ def TestTextCasingAndTrimming : [Test] ! = [test] do {
   let replacedByteNumbers = Bytes.ReplacePattern("a12b345", .repeat1.one.range(<<48>>, <<57>>)!)(
     box [digits] String.Concat(*("[", String.FromBytes(digits), "]")),
   )
+  let splitString = String.FindAndSplit("abc123xyz", .repeat1.one.ascii.digit!)
+  let splitBytes = Bytes.FindAndSplit("abc123xyz", .repeat1.one.range(<<48>>, <<57>>)!)
 
   test
     .assert("Char.ToLower lowercases a character", Char.ToLower("A") == "a")
     .assert("Char.ToUpper uppercases a character", Char.ToUpper("z") == "Z")
+    .assert("Char.FromCode builds valid characters", Char.FromCode(65) == "A")
+    .assert("Char.FromCode replaces invalid code points", Char.Code(Char.FromCode(1_114_112)) == 65_533)
+    .assert("Byte.FromCode wraps modulo 256", Byte.Code(Byte.FromCode(300)) == 44)
     .assert("String.ToLower lowercases a string", String.ToLower("Hello WORLD") == "hello world")
     .assert("String.ToUpper uppercases a string", String.ToUpper("Hello world") == "HELLO WORLD")
+    .assert("String.Chars splits into characters", String.Chars("Par") == {*("P", "a", "r")})
     .assert("String.Trim trims surrounding whitespace", String.Trim(" \tHello\n") == "Hello")
     .assert("String.TrimLeft trims one leading pattern", String.TrimLeft("::value::", .str "::") == "value::")
     .assert("String.TrimLeft keeps strings without the pattern", String.TrimLeft("value::", .str "::") == "value::")
@@ -226,6 +267,10 @@ def TestTextCasingAndTrimming : [Test] ! = [test] do {
     .assert("String.StartsWith matches a prefix pattern", String.StartsWith("hello", .str "he"))
     .assert("String.EndsWith matches a suffix pattern", String.EndsWith("hello", .str "lo"))
     .assert("String.Find returns the matched text", String.Find("abc123", .repeat1.one.ascii.digit!) is .some found and found == "123")
+    .assert(
+      "String.FindAndSplit returns context around the match",
+      splitString is .some(before, found, after)! and before == "abc" and found == "123" and after == "xyz",
+    )
     .assert("String.Replace replaces literal matches", String.Replace("red blue red", "red", "green") == "green blue green")
     .assert("String.ReplacePattern transforms pattern matches", replacedNumbers == "a[12]b[345]")
     .assert("Bytes.TrimLeft trims one leading pattern", String.FromBytes(Bytes.TrimLeft("--data--", .bytes "--")) == "data--")
@@ -233,6 +278,13 @@ def TestTextCasingAndTrimming : [Test] ! = [test] do {
     .assert("Bytes.StartsWith matches a prefix pattern", Bytes.StartsWith("hello", .bytes "he"))
     .assert("Bytes.EndsWith matches a suffix pattern", Bytes.EndsWith("hello", .bytes "lo"))
     .assert("Bytes.Find returns the matched bytes", Bytes.Find("abc123", .bytes "123") is .some found and String.FromBytes(found) == "123")
+    .assert(
+      "Bytes.FindAndSplit returns context around the match",
+      splitBytes is .some(before, found, after)!
+        and String.FromBytes(before) == "abc"
+        and String.FromBytes(found) == "123"
+        and String.FromBytes(after) == "xyz",
+    )
     .assert("Bytes.Replace replaces literal matches", String.FromBytes(Bytes.Replace("red blue red", "red", "green")) == "green blue green")
     .assert("Bytes.ReplacePattern transforms pattern matches", String.FromBytes(replacedByteNumbers) == "a[12]b[345]")
 } in !

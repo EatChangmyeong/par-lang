@@ -39,6 +39,9 @@ export {
   // Applies a mapping function to each item of a stream.
   dec Map : <e, a>[Stream<e, a>] <b>[box [a] b] Stream<e, b>
 
+  // Pairs each item with its zero-based index.
+  dec Enumerate : <e, a>[Stream<e, a>] Stream<e, (Nat) a>
+
   // Applies a mapping function to the stream's error type.
   dec MapErr : <e1, a>[Stream<e1, a>] <e2>[box [e1] e2] Stream<e2, a>
 
@@ -60,6 +63,12 @@ export {
 
   // Skips the requested number of items and yields the rest.
   dec Drop : <e, a: box>[Stream<e, a>] [Nat] Stream<e, a>
+
+  // Yields items while the test function returns `.true!`, then cancels the source.
+  dec TakeWhile : <e, a: box>[Stream<e, a>] [box [a] Bool] Stream<e, a>
+
+  // Skips items while the test function returns `.true!`, then yields the rest.
+  dec DropWhile : <e, a: box>[Stream<e, a>] [box [a] Bool] Stream<e, a>
 
   // Folds over the stream. The returned pair contains the stream completion
   // status and the final accumulator.
@@ -109,6 +118,20 @@ def Map = <e, a>[stream] <b>[f] stream.begin.case {
     .get => do { stream.get[value] } in (f(value)) stream.loop,
   }
 }
+
+def Enumerate = <e, a>[stream]
+  let index = 0 in
+  stream.begin.case {
+    .end result => .end result,
+    .item stream => .item case {
+      .cancel => stream.cancel,
+      .get => do {
+        stream.get[value]
+        let current = index
+        index += 1
+      } in ((current) value) stream.loop,
+    },
+  }
 
 def MapErr = <e1, a>[stream] <e2>[f] stream.begin.case {
   .end res => .end res->Try.MapErr(f),
@@ -228,6 +251,32 @@ def Drop = <e, a: box>[stream] [n]
       .item stream => do { stream.get[_] } in steps.loop@drop,
     },
   }
+
+def TakeWhile = <e, a: box>[stream] [predicate] stream.begin.case {
+  .end result => .end result,
+  .item stream => do {
+    stream.get[value]
+  } in predicate(value).case {
+    .true! => .item case {
+      .cancel => stream->Cancel,
+      .get => (value) stream.loop,
+    },
+    .false! => .end stream->Cancel,
+  },
+}
+
+def DropWhile = <e, a: box>[stream] [predicate] stream.begin.case {
+  .end result => .end result,
+  .item stream => do {
+    stream.get[value]
+  } in predicate(value).case {
+    .true! => stream.loop,
+    .false! => .item case {
+      .cancel => stream->Cancel,
+      .get => (value) stream,
+    },
+  },
+}
 
 def ForEach = <r>[result] <e, a>[stream] [f] stream.begin.case {
   .end status => (status) result,
