@@ -19,8 +19,9 @@ dec ParseNested : [String] Option<Nested>
 def ParseNested = [s] do {
   let p = String.Parse(s)
 
-  let (res: Option<Nested>) p: Option<String.Parser<either {}>> = chan yield {
-    p.unfounded@json
+  let (res: Option<Nested>) p: Option<String.Parser<either {}>> = do {
+    p.unfounded@nested
+  } in chan yield {
     if not p is .ready p => {
       yield(.none!) <> .none!
     }
@@ -42,7 +43,7 @@ def ParseNested = [s] do {
       .match(_, _) => {
         let items = List.Builder(type Nested)
 
-        let (item) p = chan yield { p.loop@json }
+        let (item) p = p.loop@nested
         if not p is .some p => {
           let _ = items.build
           yield(.none!) <> .none!
@@ -64,7 +65,7 @@ def ParseNested = [s] do {
 
         p.minMax(.repeat.one.whitespace!, .str ",")->Try.Ok.case {
           .match(_, _) => {
-            let (item) p = chan yield { p.loop@json }
+            let (item) p = p.loop@nested
             if not p is .some p => {
               let _ = items.build
               yield(.none!) <> .none!
