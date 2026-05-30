@@ -22,4 +22,3 @@ macro_rules! core_debug_external {
 }
 
 core_debug_external!("Log", debug_log);
-

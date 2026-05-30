@@ -61,4 +61,3 @@ macro_rules! basic_console_external {
 }
 
 basic_console_external!("Open", console_open);
-
