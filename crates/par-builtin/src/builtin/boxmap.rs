@@ -9,25 +9,22 @@ use im::OrdMap;
 use par_runtime::readback::{Data, Handle};
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "BoxMap",
-        name: "New"
-    },
-    f: |handle| Box::pin(boxmap_new(handle)),
-});
+macro_rules! core_boxmap_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "BoxMap",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "BoxMap",
-        name: "FromList"
-    },
-    f: |handle| Box::pin(boxmap_from_list(handle)),
-});
+core_boxmap_external!("New", boxmap_new);
+core_boxmap_external!("FromList", boxmap_from_list);
 
 async fn boxmap_new(handle: Handle) {
     provide_boxmap(handle, OrdMap::new());

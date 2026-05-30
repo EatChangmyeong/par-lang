@@ -19,85 +19,28 @@ inventory::submit!(ExternalTypeDef {
     typ: Type::Primitive(Span::None, PrimitiveType::Nat)
 });
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "Mod"
-    },
-    f: |handle| Box::pin(nat_mod(handle)),
-});
+macro_rules! core_nat_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Nat",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "Min"
-    },
-    f: |handle| Box::pin(nat_min(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "Max"
-    },
-    f: |handle| Box::pin(nat_max(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "Clamp"
-    },
-    f: |handle| Box::pin(nat_clamp(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "Repeat"
-    },
-    f: |handle| Box::pin(nat_repeat(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "RepeatLazy"
-    },
-    f: |handle| Box::pin(nat_repeat_lazy(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "Range"
-    },
-    f: |handle| Box::pin(nat_range(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Nat",
-        name: "FromString"
-    },
-    f: |handle| Box::pin(nat_from_string(handle)),
-});
+core_nat_external!("Mod", nat_mod);
+core_nat_external!("Min", nat_min);
+core_nat_external!("Max", nat_max);
+core_nat_external!("Clamp", nat_clamp);
+core_nat_external!("Repeat", nat_repeat);
+core_nat_external!("RepeatLazy", nat_repeat_lazy);
+core_nat_external!("Range", nat_range);
+core_nat_external!("FromString", nat_from_string);
 
 async fn nat_mod(mut handle: Handle) {
     let x = handle.receive().nat().await;

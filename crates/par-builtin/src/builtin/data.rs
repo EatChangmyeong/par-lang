@@ -3,25 +3,22 @@ use arcstr::literal;
 use par_runtime::readback::Handle;
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Data",
-        name: "ToString"
-    },
-    f: |handle| Box::pin(data_to_string(handle)),
-});
+macro_rules! core_data_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Data",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Data",
-        name: "Compare"
-    },
-    f: |handle| Box::pin(data_compare(handle)),
-});
+core_data_external!("ToString", data_to_string);
+core_data_external!("Compare", data_compare);
 
 async fn data_to_string(mut handle: Handle) {
     let value = handle.receive().data().await;

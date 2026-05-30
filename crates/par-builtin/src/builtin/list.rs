@@ -4,65 +4,26 @@ use par_runtime::readback::{Data, Handle};
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 use std::future::Future;
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "List",
-        name: "Sort"
-    },
-    f: |handle| Box::pin(list_sort(handle, false)),
-});
+macro_rules! core_list_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "List",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "List",
-        name: "SortDesc"
-    },
-    f: |handle| Box::pin(list_sort(handle, true)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "List",
-        name: "SortBy"
-    },
-    f: |handle| Box::pin(list_sort_by(handle, false)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "List",
-        name: "SortDescBy"
-    },
-    f: |handle| Box::pin(list_sort_by(handle, true)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "List",
-        name: "SortLinearBy"
-    },
-    f: |handle| Box::pin(list_sort_linear_by(handle, false)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "List",
-        name: "SortLinearDescBy"
-    },
-    f: |handle| Box::pin(list_sort_linear_by(handle, true)),
-});
+core_list_external!("Sort", list_sort, false);
+core_list_external!("SortDesc", list_sort, true);
+core_list_external!("SortBy", list_sort_by, false);
+core_list_external!("SortDescBy", list_sort_by, true);
+core_list_external!("SortLinearBy", list_sort_linear_by, false);
+core_list_external!("SortLinearDescBy", list_sort_linear_by, true);
 
 pub(super) async fn readback_list<T, F>(
     mut handle: Handle,

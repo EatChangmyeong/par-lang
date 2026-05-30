@@ -46,12 +46,19 @@ async fn console_open(mut handle: Handle) {
     }
 }
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Console",
-        name: "Open"
-    },
-    f: |handle| Box::pin(console_open(handle)),
-});
+macro_rules! basic_console_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::BASIC,
+                path: &[],
+                module: "Console",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
+
+basic_console_external!("Open", console_open);
+

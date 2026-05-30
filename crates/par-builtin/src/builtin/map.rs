@@ -6,25 +6,22 @@ use arcstr::literal;
 use par_runtime::readback::{Data, Handle};
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Map",
-        name: "New"
-    },
-    f: |handle| Box::pin(map_new(handle)),
-});
+macro_rules! core_map_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Map",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Map",
-        name: "FromList"
-    },
-    f: |handle| Box::pin(map_from_list(handle)),
-});
+core_map_external!("New", map_new);
+core_map_external!("FromList", map_from_list);
 
 async fn map_new(handle: Handle) {
     provide_map(handle, BTreeMap::new()).await;

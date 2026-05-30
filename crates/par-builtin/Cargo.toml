@@ -16,6 +16,7 @@ hyper = { version = "1.7.0", features = ["http1", "server"] }
 hyper-util = { version = "0.1.6", features = ["tokio"] }
 im = "15"
 indexmap = "2.7.0"
+jiff = { version = "0.2", features = ["tzdb-bundle-always"] }
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
 num-integer = "0.1.46"

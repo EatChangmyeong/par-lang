@@ -7,12 +7,19 @@ async fn debug_log(mut handle: Handle) {
     handle.break_();
 }
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Debug",
-        name: "Log"
-    },
-    f: |handle| { Box::pin(debug_log(handle)) },
-});
+macro_rules! core_debug_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Debug",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
+
+core_debug_external!("Log", debug_log);
+

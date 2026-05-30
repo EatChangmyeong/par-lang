@@ -20,285 +20,48 @@ inventory::submit!(ExternalTypeDef {
     typ: Type::Primitive(Span::None, PrimitiveType::Float)
 });
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "NaN_"
-    },
-    f: |handle| Box::pin(float_nan(handle)),
-});
+macro_rules! core_float_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Float",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Inf_"
-    },
-    f: |handle| Box::pin(float_inf(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "NegInf_"
-    },
-    f: |handle| Box::pin(float_neg_inf(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Pi_"
-    },
-    f: |handle| Box::pin(float_pi(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "E_"
-    },
-    f: |handle| Box::pin(float_e(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "IsNaN"
-    },
-    f: |handle| Box::pin(float_is_nan(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "IsFinite"
-    },
-    f: |handle| Box::pin(float_is_finite(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "IsInfinite"
-    },
-    f: |handle| Box::pin(float_is_infinite(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "FromInt"
-    },
-    f: |handle| Box::pin(float_from_int(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "ToInt"
-    },
-    f: |handle| Box::pin(float_to_int(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "FromString"
-    },
-    f: |handle| Box::pin(float_from_string(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Neg"
-    },
-    f: |handle| Box::pin(float_neg(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Abs"
-    },
-    f: |handle| Box::pin(float_abs(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Floor"
-    },
-    f: |handle| Box::pin(float_floor(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Ceil"
-    },
-    f: |handle| Box::pin(float_ceil(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Round"
-    },
-    f: |handle| Box::pin(float_round(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Pow"
-    },
-    f: |handle| Box::pin(float_pow(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Min"
-    },
-    f: |handle| Box::pin(float_min(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Max"
-    },
-    f: |handle| Box::pin(float_max(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Clamp"
-    },
-    f: |handle| Box::pin(float_clamp(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Equals"
-    },
-    f: |handle| Box::pin(float_equals(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Sqrt"
-    },
-    f: |handle| Box::pin(float_sqrt(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Exp"
-    },
-    f: |handle| Box::pin(float_exp(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Ln"
-    },
-    f: |handle| Box::pin(float_ln(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Sin"
-    },
-    f: |handle| Box::pin(float_sin(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Cos"
-    },
-    f: |handle| Box::pin(float_cos(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Tan"
-    },
-    f: |handle| Box::pin(float_tan(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Float",
-        name: "Atan2"
-    },
-    f: |handle| Box::pin(float_atan2(handle)),
-});
+core_float_external!("NaN_", float_nan);
+core_float_external!("Inf_", float_inf);
+core_float_external!("NegInf_", float_neg_inf);
+core_float_external!("Pi_", float_pi);
+core_float_external!("E_", float_e);
+core_float_external!("IsNaN", float_is_nan);
+core_float_external!("IsFinite", float_is_finite);
+core_float_external!("IsInfinite", float_is_infinite);
+core_float_external!("FromInt", float_from_int);
+core_float_external!("ToInt", float_to_int);
+core_float_external!("FromString", float_from_string);
+core_float_external!("Neg", float_neg);
+core_float_external!("Abs", float_abs);
+core_float_external!("Floor", float_floor);
+core_float_external!("Ceil", float_ceil);
+core_float_external!("Round", float_round);
+core_float_external!("Pow", float_pow);
+core_float_external!("Min", float_min);
+core_float_external!("Max", float_max);
+core_float_external!("Clamp", float_clamp);
+core_float_external!("Equals", float_equals);
+core_float_external!("Sqrt", float_sqrt);
+core_float_external!("Exp", float_exp);
+core_float_external!("Ln", float_ln);
+core_float_external!("Sin", float_sin);
+core_float_external!("Cos", float_cos);
+core_float_external!("Tan", float_tan);
+core_float_external!("Atan2", float_atan2);
 
 fn signal_bool(mut handle: Handle, value: bool) {
     if value {

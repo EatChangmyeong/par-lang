@@ -34,25 +34,22 @@ use par_runtime::primitive::ParString;
 use par_runtime::readback::Handle;
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Http",
-        name: "Fetch"
-    },
-    f: |handle| Box::pin(http_fetch(handle)),
-});
+macro_rules! basic_http_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::BASIC,
+                path: &[],
+                module: "Http",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Http",
-        name: "Listen"
-    },
-    f: |handle| Box::pin(http_listen(handle)),
-});
+basic_http_external!("Fetch", http_fetch);
+basic_http_external!("Listen", http_listen);
 
 // ----------
 

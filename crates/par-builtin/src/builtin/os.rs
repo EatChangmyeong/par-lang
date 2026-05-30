@@ -16,175 +16,37 @@ use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
 };
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "Path"
-    },
-    f: |handle| Box::pin(path_from_bytes(handle)),
-});
+macro_rules! basic_os_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::BASIC,
+                path: &[],
+                module: "Os",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "Stdin"
-    },
-    f: |handle| Box::pin(os_stdin(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "Stdout"
-    },
-    f: |handle| Box::pin(os_stdout(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "Stderr"
-    },
-    f: |handle| Box::pin(os_stderr(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "OpenFile"
-    },
-    f: |handle| Box::pin(os_open_file(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "CreateOrReplaceFile"
-    },
-    f: |handle| Box::pin(os_create_or_replace_file(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "CreateNewFile"
-    },
-    f: |handle| Box::pin(os_create_new_file(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "AppendToFile"
-    },
-    f: |handle| Box::pin(os_append_to_file(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "CreateOrAppendToFile"
-    },
-    f: |handle| Box::pin(os_create_or_append_to_file(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "CreateDir"
-    },
-    f: |handle| Box::pin(os_create_dir(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "RemoveFile"
-    },
-    f: |handle| Box::pin(os_remove_file(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "RemoveDir"
-    },
-    f: |handle| Box::pin(os_remove_dir(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "MoveFile"
-    },
-    f: |handle| Box::pin(os_move_file(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "MoveDir"
-    },
-    f: |handle| Box::pin(os_move_dir(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "ListDir"
-    },
-    f: |handle| Box::pin(os_list_dir(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "TraverseDir"
-    },
-    f: |handle| Box::pin(os_traverse_dir(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::BASIC,
-        path: &[],
-        module: "Os",
-        name: "Env"
-    },
-    f: |handle| Box::pin(envmap_new(handle)),
-});
+basic_os_external!("Path", path_from_bytes);
+basic_os_external!("Stdin", os_stdin);
+basic_os_external!("Stdout", os_stdout);
+basic_os_external!("Stderr", os_stderr);
+basic_os_external!("OpenFile", os_open_file);
+basic_os_external!("CreateOrReplaceFile", os_create_or_replace_file);
+basic_os_external!("CreateNewFile", os_create_new_file);
+basic_os_external!("AppendToFile", os_append_to_file);
+basic_os_external!("CreateOrAppendToFile", os_create_or_append_to_file);
+basic_os_external!("CreateDir", os_create_dir);
+basic_os_external!("RemoveFile", os_remove_file);
+basic_os_external!("RemoveDir", os_remove_dir);
+basic_os_external!("MoveFile", os_move_file);
+basic_os_external!("MoveDir", os_move_dir);
+basic_os_external!("ListDir", os_list_dir);
+basic_os_external!("TraverseDir", os_traverse_dir);
+basic_os_external!("Env", envmap_new);
 
 async fn path_from_bytes(mut handle: Handle) {
     let b = handle.receive().bytes().await;

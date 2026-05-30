@@ -6,15 +6,21 @@ use par_runtime::primitive::ParString;
 use par_runtime::readback::Handle;
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Url",
-        name: "FromString"
-    },
-    f: |handle| Box::pin(url_from_string(handle)),
-});
+macro_rules! core_url_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Url",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
+
+core_url_external!("FromString", url_from_string);
 
 async fn url_from_string(mut handle: Handle) {
     let input = handle.receive().string().await;

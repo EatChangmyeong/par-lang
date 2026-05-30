@@ -4,65 +4,26 @@ use par_runtime::primitive::Number;
 use par_runtime::readback::Handle;
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Number",
-        name: "Zero_"
-    },
-    f: |handle| Box::pin(number_zero(handle)),
-});
+macro_rules! core_number_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Number",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Number",
-        name: "Add"
-    },
-    f: |handle| Box::pin(number_add(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Number",
-        name: "Sub"
-    },
-    f: |handle| Box::pin(number_sub(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Number",
-        name: "Mul"
-    },
-    f: |handle| Box::pin(number_mul(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Number",
-        name: "Div"
-    },
-    f: |handle| Box::pin(number_div(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Number",
-        name: "Neg"
-    },
-    f: |handle| Box::pin(number_neg(handle)),
-});
+core_number_external!("Zero_", number_zero);
+core_number_external!("Add", number_add);
+core_number_external!("Sub", number_sub);
+core_number_external!("Mul", number_mul);
+core_number_external!("Div", number_div);
+core_number_external!("Neg", number_neg);
 
 async fn number_zero(mut handle: Handle) {
     handle.receive().continue_();

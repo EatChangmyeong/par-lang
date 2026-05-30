@@ -24,75 +24,27 @@ inventory::submit!(ExternalTypeDef {
     typ: Type::Primitive(Span::None, PrimitiveType::String)
 });
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "String",
-        name: "Builder"
-    },
-    f: |handle| Box::pin(string_builder(handle)),
-});
+macro_rules! core_string_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "String",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "String",
-        name: "Parse"
-    },
-    f: |handle| Box::pin(string_parser(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "String",
-        name: "ParseReader"
-    },
-    f: |handle| Box::pin(string_parser_from_reader(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "String",
-        name: "Quote"
-    },
-    f: |handle| Box::pin(string_quote(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "String",
-        name: "FromBytes"
-    },
-    f: |handle| Box::pin(string_from_bytes(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "String",
-        name: "ToLower"
-    },
-    f: |handle| Box::pin(string_to_lower(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "String",
-        name: "ToUpper"
-    },
-    f: |handle| Box::pin(string_to_upper(handle)),
-});
+core_string_external!("Builder", string_builder);
+core_string_external!("Parse", string_parser);
+core_string_external!("ParseReader", string_parser_from_reader);
+core_string_external!("Quote", string_quote);
+core_string_external!("FromBytes", string_from_bytes);
+core_string_external!("ToLower", string_to_lower);
+core_string_external!("ToUpper", string_to_upper);
 
 async fn string_builder(mut handle: Handle) {
     let mut buf = String::new();

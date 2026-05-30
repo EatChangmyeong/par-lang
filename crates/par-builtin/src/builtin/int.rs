@@ -17,75 +17,27 @@ inventory::submit!(ExternalTypeDef {
     typ: Type::Primitive(Span::None, PrimitiveType::Int)
 });
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Int",
-        name: "Mod"
-    },
-    f: |handle| Box::pin(int_mod(handle)),
-});
+macro_rules! core_int_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Int",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Int",
-        name: "Min"
-    },
-    f: |handle| Box::pin(int_min(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Int",
-        name: "Max"
-    },
-    f: |handle| Box::pin(int_max(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Int",
-        name: "Abs"
-    },
-    f: |handle| Box::pin(int_abs(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Int",
-        name: "Clamp"
-    },
-    f: |handle| Box::pin(int_clamp(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Int",
-        name: "Range"
-    },
-    f: |handle| Box::pin(int_range(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Int",
-        name: "FromString"
-    },
-    f: |handle| Box::pin(int_from_string(handle)),
-});
+core_int_external!("Mod", int_mod);
+core_int_external!("Min", int_min);
+core_int_external!("Max", int_max);
+core_int_external!("Abs", int_abs);
+core_int_external!("Clamp", int_clamp);
+core_int_external!("Range", int_range);
+core_int_external!("FromString", int_from_string);
 
 async fn int_mod(mut handle: Handle) {
     let x = handle.receive().int().await;

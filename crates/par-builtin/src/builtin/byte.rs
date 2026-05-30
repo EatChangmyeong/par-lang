@@ -18,35 +18,23 @@ inventory::submit!(ExternalTypeDef {
     typ: Type::Primitive(Span::None, PrimitiveType::Byte)
 });
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Byte",
-        name: "Code"
-    },
-    f: |handle| Box::pin(byte_code(handle)),
-});
+macro_rules! core_byte_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Byte",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Byte",
-        name: "FromCode"
-    },
-    f: |handle| Box::pin(byte_from_code(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Byte",
-        name: "Is"
-    },
-    f: |handle| Box::pin(byte_is(handle)),
-});
+core_byte_external!("Code", byte_code);
+core_byte_external!("FromCode", byte_from_code);
+core_byte_external!("Is", byte_is);
 
 async fn byte_code(mut handle: Handle) {
     let c = handle.receive().byte().await;

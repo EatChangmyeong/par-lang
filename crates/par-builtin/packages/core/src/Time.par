@@ -1,0 +1,227 @@
+// Instants, durations, time zones, and civil date-times.
+//
+// An `Instant` is a point on the timeline; a `Duration` is a signed span of
+// nanoseconds. The difference of two instants is a duration (`Since`), and two
+// instants can be ordered (`Compare`). A `Zone` maps instants to UTC offsets, and
+// `InZone` projects an instant into a `Zoned` civil date-time for calendar work.
+export module Time
+
+import {
+  Bool
+  Int
+  Nat
+  Option
+  Ordering
+  String
+}
+
+export {
+  // A signed span of time, measured in nanoseconds.
+  //
+  // `Duration` is just `Int`, so it supports the full integer algebra: add and
+  // subtract durations, multiply or divide by a number, negate, and compare them.
+  // Build durations from the unit constants, e.g. `5 * Time.Second` or
+  // `2 * Time.Hour + 30 * Time.Minute`.
+  type Duration = Int
+
+  // One nanosecond — the smallest representable duration.
+  dec Nanosecond  : Duration
+  // One microsecond (1000 nanoseconds).
+  dec Microsecond : Duration
+  // One millisecond (1000 microseconds).
+  dec Millisecond : Duration
+  // One second (1000 milliseconds).
+  dec Second      : Duration
+  // One minute (60 seconds).
+  dec Minute      : Duration
+  // One hour (60 minutes).
+  dec Hour        : Duration
+
+  // The whole number of nanoseconds in a duration.
+  dec Nanoseconds  : [Duration] Int
+  // The whole number of microseconds in a duration (truncated toward zero).
+  dec Microseconds : [Duration] Int
+  // The whole number of milliseconds in a duration (truncated toward zero).
+  dec Milliseconds : [Duration] Int
+  // The whole number of seconds in a duration (truncated toward zero).
+  dec Seconds      : [Duration] Int
+  // The whole number of minutes in a duration (truncated toward zero).
+  dec Minutes      : [Duration] Int
+  // The whole number of hours in a duration (truncated toward zero).
+  dec Hours        : [Duration] Int
+
+  // A human-readable rendering of a duration, e.g. `"1h30m15s"`, `"-2m"`, `"0s"`.
+  dec Show : [Duration] String
+
+  // A point on the timeline, independent of any time zone.
+  //
+  // - `.unixNanos` — nanoseconds since the Unix epoch (1970-01-01T00:00:00Z).
+  // - `.add(duration)` — shift the instant by a duration, returning a new instant.
+  //
+  // Differences and ordering are the free functions `Since` and `Compare`; civil
+  // fields come from projecting into a `Zone` with `InZone`.
+  type Instant = iterative box choice {
+    .unixNanos     => Int,
+    .add(Duration) => self,
+  }
+
+  // The current instant, read from the system clock.
+  dec Now : Instant
+
+  // The Unix epoch, 1970-01-01T00:00:00Z.
+  dec Epoch : Instant
+
+  // `a->Since(b)` is the duration from `b` to `a` (that is, `a − b`).
+  dec Since : [Instant, Instant] Duration
+
+  // Orders two instants on the timeline.
+  dec Compare : [Instant, Instant] Ordering
+
+  // Parses an RFC 3339 timestamp (e.g. `"2024-01-01T12:00:00Z"`) into an instant.
+  dec FromRFC3339 : [String] Option<Instant>
+
+  // Renders an instant as an RFC 3339 timestamp in UTC.
+  dec ToRFC3339 : [Instant] String
+
+  // A time zone: a mapping from instants to UTC offsets.
+  //
+  // - `.name` — the zone's name (an IANA name like `"Europe/Prague"`, or an
+  //   offset like `"+02:00"` for fixed zones).
+  // - `.offsetAt(instant)` — the zone's UTC offset at the given instant, as a
+  //   duration (it can vary across the year because of daylight saving time).
+  type Zone = box choice {
+    .name              => String,
+    .offsetAt(Instant) => Duration,
+  }
+
+  // Coordinated Universal Time.
+  dec UTC : Zone
+
+  // The system's local time zone.
+  dec Local : Zone
+
+  // A fixed-offset zone, e.g. `Offset(2 * Time.Hour)` for `+02:00`.
+  dec Offset : [Duration] Zone
+
+  // Looks up an IANA time zone by name, e.g. `Zone("America/New_York")`.
+  dec Zone : [String] Option<Zone>
+
+  // A day of the week.
+  type Weekday = either {
+    .monday!,
+    .tuesday!,
+    .wednesday!,
+    .thursday!,
+    .friday!,
+    .saturday!,
+    .sunday!,
+  }
+
+  // An instant seen through a time zone: a civil date-time with calendar fields.
+  //
+  // - `.year` — the year (can be negative for years before 1 CE).
+  // - `.month` — the month, `1` to `12`.
+  // - `.day` — the day of the month, `1` to `31`.
+  // - `.hour` — the hour, `0` to `23`.
+  // - `.minute` — the minute, `0` to `59`.
+  // - `.second` — the second, `0` to `59`.
+  // - `.nanosecond` — the sub-second part, `0` to `999999999`.
+  // - `.weekday` — the day of the week.
+  // - `.zone` — the time zone this date-time is in.
+  // - `.instant` — the underlying instant on the timeline.
+  // - `.format(layout)` — render using a strftime-style layout.
+  // - `.addYears(n)` — shift by whole years on the calendar, returning a new value.
+  // - `.addMonths(n)` — shift by whole months on the calendar.
+  // - `.addDays(n)` — shift by whole days on the calendar.
+  //
+  // Calendar arithmetic (`.addYears` / `.addMonths` / `.addDays`) respects the
+  // zone, including daylight-saving transitions. For exact arithmetic on the
+  // timeline use `Instant.add` instead.
+  type Zoned = iterative box choice {
+    .year       => Int,
+    .month      => Nat,
+    .day        => Nat,
+    .hour       => Nat,
+    .minute     => Nat,
+    .second     => Nat,
+    .nanosecond => Nat,
+    .weekday    => Weekday,
+    .zone       => Zone,
+    .instant    => Instant,
+    .format(String) => String,
+    .addYears(Int)  => self,
+    .addMonths(Int) => self,
+    .addDays(Int)   => self,
+  }
+
+  // Projects an instant into a time zone, yielding a civil date-time.
+  dec InZone : [Instant, Zone] Zoned
+
+  // Builds a civil date-time in a zone from its calendar fields:
+  // `At(zone)(year, month, day)(hour, minute, second)`. Returns `.none!` if the
+  // fields do not denote a valid date and time.
+  dec At : [Zone] [Int, Nat, Nat] [Nat, Nat, Nat] Option<Zoned>
+
+  // Parses a civil date-time in a zone using a strftime-style layout:
+  // `Parse(zone)(layout, text)`. Returns `.none!` if the text does not match.
+  dec Parse : [Zone] [String, String] Option<Zoned>
+}
+
+// Internal externals (not exported)
+
+dec Now_ : [!] Int
+def Now_ = external
+
+dec FromUnixNanos_ : [Int] Instant
+def FromUnixNanos_ = external
+
+// Duration unit constants
+
+def Nanosecond  = 1
+def Microsecond = 1_000
+def Millisecond = 1_000_000
+def Second      = 1_000_000_000
+def Minute      = 60 * Second
+def Hour        = 60 * Minute
+
+// Duration accessors
+
+def Nanoseconds  = [d] d
+def Microseconds = [d] d / Microsecond
+def Milliseconds = [d] d / Millisecond
+def Seconds      = [d] d / Second
+def Minutes      = [d] d / Minute
+def Hours        = [d] d / Hour
+
+def Show = external
+
+// Instants
+
+def Now   = FromUnixNanos_(Now_(!))
+def Epoch = FromUnixNanos_(0)
+
+def Since = [a, b] a.unixNanos - b.unixNanos
+
+def Compare = [a, b]
+  let d = Since(a, b) in
+  if {
+    d < 0  => .less!,
+    d == 0 => .equal!,
+    else   => .greater!,
+  }
+
+def FromRFC3339 = external
+def ToRFC3339   = external
+
+// Zones
+
+def UTC    = external
+def Local  = external
+def Offset = external
+def Zone   = external
+
+// Civil date-times
+
+def InZone = external
+def At     = external
+def Parse  = external

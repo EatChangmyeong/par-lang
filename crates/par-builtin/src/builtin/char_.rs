@@ -17,55 +17,25 @@ inventory::submit!(ExternalTypeDef {
     typ: Type::Primitive(Span::None, PrimitiveType::Char)
 });
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Char",
-        name: "Code"
-    },
-    f: |handle| Box::pin(char_code(handle)),
-});
+macro_rules! core_char_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Char",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Char",
-        name: "FromCode"
-    },
-    f: |handle| Box::pin(char_from_code(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Char",
-        name: "Is"
-    },
-    f: |handle| Box::pin(char_is(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Char",
-        name: "ToLower"
-    },
-    f: |handle| Box::pin(char_to_lower(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Char",
-        name: "ToUpper"
-    },
-    f: |handle| Box::pin(char_to_upper(handle)),
-});
+core_char_external!("Code", char_code);
+core_char_external!("FromCode", char_from_code);
+core_char_external!("Is", char_is);
+core_char_external!("ToLower", char_to_lower);
+core_char_external!("ToUpper", char_to_upper);
 
 async fn char_code(mut handle: Handle) {
     let c = handle.receive().char().await;

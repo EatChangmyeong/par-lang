@@ -32,75 +32,27 @@ inventory::submit!(ExternalTypeDef {
     typ: Type::Primitive(Span::None, PrimitiveType::Bytes)
 });
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Bytes",
-        name: "Builder"
-    },
-    f: |handle| Box::pin(bytes_builder(handle)),
-});
+macro_rules! core_bytes_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Bytes",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Bytes",
-        name: "Parse"
-    },
-    f: |handle| Box::pin(bytes_parser(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Bytes",
-        name: "ParseReader"
-    },
-    f: |handle| Box::pin(bytes_parser_from_reader(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Bytes",
-        name: "Reader"
-    },
-    f: |handle| Box::pin(bytes_reader(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Bytes",
-        name: "EmptyReader"
-    },
-    f: |handle| Box::pin(bytes_empty_reader(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Bytes",
-        name: "PipeReader"
-    },
-    f: |handle| Box::pin(bytes_pipe_reader(handle)),
-});
-
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Bytes",
-        name: "Length"
-    },
-    f: |handle| Box::pin(bytes_length(handle)),
-});
+core_bytes_external!("Builder", bytes_builder);
+core_bytes_external!("Parse", bytes_parser);
+core_bytes_external!("ParseReader", bytes_parser_from_reader);
+core_bytes_external!("Reader", bytes_reader);
+core_bytes_external!("EmptyReader", bytes_empty_reader);
+core_bytes_external!("PipeReader", bytes_pipe_reader);
+core_bytes_external!("Length", bytes_length);
 
 async fn bytes_builder(mut handle: Handle) {
     let mut buf = Vec::<u8>::new();

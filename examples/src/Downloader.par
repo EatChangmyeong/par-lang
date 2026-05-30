@@ -9,13 +9,13 @@ import {
   @core/Map
   @core/Nat
   @core/Option
+  @core/Time
   @core/Try
   @core/String
   @core/Url
   @core/Debug
   @basic/Http
   @basic/Os
-  @basic/Time
 }
 
 type Event = (Os.Path) either {  // destination
@@ -102,7 +102,7 @@ def DownloadFile = [(sourceUrl, dest)!] chan yield {
       file.write(bytes).try@clearResp
 
       bytesSinceLastEvent += Bytes.Length(bytes)
-      if timeOfLastEvent + 100 <= Time.Now => {
+      if Time.Now->Time.Since(timeOfLastEvent) >= 100 * Time.Millisecond => {
         yield.item((dest) .progressed bytesSinceLastEvent)
         let bytesSinceLastEvent = 0
         let timeOfLastEvent = Time.Now
@@ -154,12 +154,12 @@ def ShowDownloadProgress = [events, rootPath] chan exit {
 
         .finished! => {
           tracker.file(name).ended[startTime, downloadedSize]
-          let duration = Time.Now - startTime
-          let speed = downloadedSize * 1000 / duration
+          let duration = Time.Now->Time.Since(startTime)
+          let speed = downloadedSize * Time.Second / duration
           stdout.write(String.Concat(*(
             `\nFinished downloading ${name}\n`,
             `    Size:  #{downloadedSize} B\n`,
-            `    Time:  #{duration} ms\n`,
+            `    Time:  ${Time.Show(duration)}\n`,
             `    Speed: #{speed} B/s\n`
           ))).try
         }
@@ -185,13 +185,13 @@ type ProgressTracker = iterative choice {
   .stats => (Nat, Int, Int) self,
   .file(String) => choice {
     .started(Nat) => self,
-    .ended => (Nat, Nat) self,
+    .ended => (Time.Instant, Nat) self,
     .progressed(Nat) => self,
   }
 }
 
 def NewProgressTracker: ProgressTracker = do {
-  let filesInProgress = Map.New(type String, type (Nat, Nat, Nat)!)
+  let filesInProgress = Map.New(type String, type (Time.Instant, Nat, Nat)!)
   let sumDownloaded: Int = 0
   let sumExpected: Int = 0
 } in begin case {

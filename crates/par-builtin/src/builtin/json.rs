@@ -8,25 +8,22 @@ use par_runtime::readback::Handle;
 use par_runtime::registry::{DefinitionRef, ExternalDef, PackageRef};
 use serde_json::{Map, Number, Value};
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Json",
-        name: "Encode"
-    },
-    f: |handle| Box::pin(json_encode(handle)),
-});
+macro_rules! core_json_external {
+    ($name:literal, $f:path $(, $arg:expr)*) => {
+        inventory::submit!(ExternalDef {
+            path: DefinitionRef {
+                package: PackageRef::CORE,
+                path: &[],
+                module: "Json",
+                name: $name,
+            },
+            f: |handle| Box::pin($f(handle $(, $arg)*)),
+        });
+    };
+}
 
-inventory::submit!(ExternalDef {
-    path: DefinitionRef {
-        package: PackageRef::CORE,
-        path: &[],
-        module: "Json",
-        name: "Decode"
-    },
-    f: |handle| Box::pin(json_decode(handle)),
-});
+core_json_external!("Encode", json_encode);
+core_json_external!("Decode", json_decode);
 
 #[derive(Clone, Debug)]
 enum JsonValue {

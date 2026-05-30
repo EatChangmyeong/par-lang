@@ -159,6 +159,10 @@ const CORE_SOURCE_FILES: &[BuiltinSourceFile] = &[
         source: include_str!("../packages/core/src/Test.par"),
     },
     BuiltinSourceFile {
+        relative_path_from_src: "Time.par",
+        source: include_str!("../packages/core/src/Time.par"),
+    },
+    BuiltinSourceFile {
         relative_path_from_src: "Url.par",
         source: include_str!("../packages/core/src/Url.par"),
     },
@@ -177,10 +181,6 @@ const BASIC_SOURCE_FILES: &[BuiltinSourceFile] = &[
     BuiltinSourceFile {
         relative_path_from_src: "Os.par",
         source: include_str!("../packages/basic/src/Os.par"),
-    },
-    BuiltinSourceFile {
-        relative_path_from_src: "Time.par",
-        source: include_str!("../packages/basic/src/Time.par"),
     },
 ];
 
