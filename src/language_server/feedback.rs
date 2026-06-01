@@ -165,9 +165,6 @@ fn uri_for_span(span: &Span) -> Option<Uri> {
 }
 
 fn file_name_to_uri(file: &FileName) -> Option<Uri> {
-    if *file == FileName::BUILTIN {
-        return None;
-    }
     let path = Path::new(file.0.as_str());
     if path.is_absolute() {
         return path_to_uri(path);

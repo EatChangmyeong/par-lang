@@ -1,10 +1,12 @@
 use super::io::IO;
+use crate::language_server::ext::{GetBuiltinFileContent, GetBuiltinFileContentParams};
 use crate::language_server::feedback::{FeedbackBookKeeper, diagnostic_for_error};
 use crate::language_server::instance::Instance;
-use lsp_server::Connection;
+use lsp_server::{Connection, ErrorCode};
 use lsp_types::notification::DidSaveTextDocument;
 use lsp_types::request::{DocumentSymbolRequest, ExecuteCommand, GotoDeclaration, GotoDefinition};
 use lsp_types::{self as lsp, InitializeParams, Uri};
+use par_builtin::get_builtin_source;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -106,6 +108,20 @@ impl<'c> LanguageServer<'c> {
                         tracing::warn!("Unhandled command: {:?}", params);
                         return;
                     }
+                }
+            }
+            GetBuiltinFileContent::METHOD => {
+                let GetBuiltinFileContentParams { builtin_path } =
+                    extract_request::<GetBuiltinFileContent>(request);
+
+                if let Some(content) = get_builtin_source(&builtin_path) {
+                    lsp_server::Response::new_ok(request_id, content)
+                } else {
+                    lsp_server::Response::new_err(
+                        request_id,
+                        ErrorCode::InvalidRequest as i32,
+                        format!("unknown builtin {builtin_path}"),
+                    )
                 }
             }
             _ => {

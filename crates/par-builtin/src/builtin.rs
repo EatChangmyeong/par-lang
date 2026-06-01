@@ -184,6 +184,20 @@ const BASIC_SOURCE_FILES: &[BuiltinSourceFile] = &[
     },
 ];
 
+pub fn get_builtin_source(filename: &str) -> Option<&'static str> {
+    let (package, path) = filename.split_once('/')?;
+    let files = match package {
+        "core" => CORE_SOURCE_FILES,
+        "basic" => BASIC_SOURCE_FILES,
+        _ => return None,
+    };
+    files
+        .iter()
+        .find_map(|file| (file.relative_path_from_src == path).then_some(file.source))
+}
+
+pub const PAR_BUILTIN_URI_SCHEME: &str = "par-builtin";
+
 fn parse_builtin_sources(
     package_name: &str,
     source_files: &[BuiltinSourceFile],
@@ -191,9 +205,10 @@ fn parse_builtin_sources(
     let files = source_files
         .iter()
         .map(|file| LoadedPackageFile {
-            name: FileName::from(
-                format!("par:{}/{}", package_name, file.relative_path_from_src).as_str(),
-            ),
+            name: FileName::from(format!(
+                "{PAR_BUILTIN_URI_SCHEME}:{}/{}",
+                package_name, file.relative_path_from_src
+            )),
             relative_path_from_src: PathBuf::from(file.relative_path_from_src),
             source: file.source.to_owned(),
         })
