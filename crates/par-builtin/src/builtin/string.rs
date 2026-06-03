@@ -21,6 +21,7 @@ inventory::submit!(ExternalTypeDef {
         module: "String",
         name: "String"
     },
+    doc: r"A primitive type representing a UTF-8 encoded string.",
     typ: Type::Primitive(Span::None, PrimitiveType::String)
 });
 

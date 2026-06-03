@@ -15,6 +15,7 @@ inventory::submit!(ExternalTypeDef {
         module: "Byte",
         name: "Byte"
     },
+    doc: r"A primitive type representing a single byte.",
     typ: Type::Primitive(Span::None, PrimitiveType::Byte)
 });
 

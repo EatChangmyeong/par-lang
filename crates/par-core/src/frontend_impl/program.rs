@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use crate::location::{FileName, Point, Span, Spanning};
 
 use super::{
-    language::{CompileError, GlobalName, LocalName, TypeParameter, Unresolved},
+    language::{CompileError, GlobalName, TypeParameter, Unresolved},
     parse::SyntaxError,
     process::{self, HoverInfo},
     types::{Context, Type, TypeDefs, TypeError},
@@ -126,21 +126,16 @@ pub struct Definition<Expr, S> {
 }
 
 impl TypeDef<Unresolved> {
-    pub fn external(name: &'static str, params: &[&'static str], typ: Type<Unresolved>) -> Self {
+    pub fn external(name: &'static str, doc: &'static str, typ: Type<Unresolved>) -> Self {
         Self {
             span: Default::default(),
             exported: true,
-            doc: None,
+            doc: Some(DocComment {
+                span: Span::None,
+                markdown: ArcStr::from(doc),
+            }),
             name: GlobalName::<Unresolved>::external(None, name),
-            params: params
-                .into_iter()
-                .map(|&var| {
-                    TypeParameter::any(LocalName {
-                        span: Default::default(),
-                        string: ArcStr::from(var),
-                    })
-                })
-                .collect(),
+            params: Vec::new(),
             typ,
         }
     }

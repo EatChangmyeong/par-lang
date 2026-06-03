@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 pub struct ExternalTypeDef {
     pub path: DefinitionRef<'static>,
     pub typ: Type<Unresolved>,
+    pub doc: &'static str,
 }
 
 inventory::collect!(ExternalTypeDef);
