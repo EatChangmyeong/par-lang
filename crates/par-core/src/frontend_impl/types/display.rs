@@ -49,6 +49,16 @@ impl TypeRenderOptions {
             ..self
         }
     }
+
+    fn write_indentation(self, f: &mut impl Write) -> fmt::Result {
+        if !self.compact {
+            write!(f, "\n")?;
+            for _ in 0..self.indent {
+                write!(f, "  ")?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<S: Clone> Type<S> {
@@ -406,30 +416,32 @@ fn write_braced_branches<S: Clone, N: GlobalNameWriter<S>>(
 
     write!(f, "{prefix} {{")?;
 
-    if options.compact {
-        for (branch, branch_type) in branches {
-            if choice {
-                write!(f, ".{branch} => ")?;
+    for (branch, branch_type) in branches {
+        let options = options.next_indent();
+        options.write_indentation(f)?;
+        write!(f, ".{branch}")?;
+        if choice {
+            if matches!(branch_type, Type::Function(.., vars) if vars.is_empty())
+                || matches!(branch_type, Type::Forall(..))
+            {
+                write_pair_like(f, names, "(", ") =>", branch_type, true, options)?;
             } else {
-                write!(f, ".{branch} ")?;
+                write!(f, " => ")?;
+                write_type_with_options(f, names, branch_type, options)?;
+            }
+        } else {
+            if matches!(branch_type, Type::Break(_) | Type::Exists(..))
+                || matches!(branch_type, Type::Pair(.., vars) if vars.is_empty())
+            {
+                // no space between `.foo` and `!`/`(`
+            } else {
+                write!(f, " ")?;
             }
             write_type_with_options(f, names, branch_type, options)?;
-            write!(f, ",")?;
         }
-        return write!(f, "}}");
-    }
-
-    for (branch, branch_type) in branches {
-        indentation(f, options.indent + 1)?;
-        if choice {
-            write!(f, ".{branch} => ")?;
-        } else {
-            write!(f, ".{branch} ")?;
-        }
-        write_type_with_options(f, names, branch_type, options.next_indent())?;
         write!(f, ",")?;
     }
-    indentation(f, options.indent)?;
+    options.write_indentation(f)?;
     write!(f, "}}")
 }
 
@@ -460,12 +472,4 @@ fn dual_keyword_hover_span<S>(full_span: &Span, name: &GlobalName<S>) -> Span {
         }
         _ => Span::None,
     }
-}
-
-fn indentation(f: &mut impl Write, indent: usize) -> fmt::Result {
-    write!(f, "\n")?;
-    for _ in 0..indent {
-        write!(f, "  ")?;
-    }
-    Ok(())
 }
