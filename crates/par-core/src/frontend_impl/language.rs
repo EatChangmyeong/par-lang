@@ -178,6 +178,12 @@ impl GlobalName<Unresolved> {
     }
 }
 
+impl GlobalName<Universal> {
+    pub fn is_primary_export(&self) -> bool {
+        self.primary == self.module.module
+    }
+}
+
 impl<S> GlobalName<S> {
     pub fn new(span: Span, module: S, primary: String) -> Self {
         Self {
