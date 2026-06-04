@@ -22,7 +22,7 @@ def Square = [n: Nat] n * n
 Without pipes you call them inside one another:
 
 ```par
-let result = Square(Add(3, Double(4)))  // = 196
+let result = Square(Add(3, Double(4)))  // = 121
 ```
 
 With pipes you can say the same thing in the order you want to read it:
