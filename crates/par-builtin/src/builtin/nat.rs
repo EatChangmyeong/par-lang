@@ -16,7 +16,7 @@ inventory::submit!(ExternalTypeDef {
         module: "Nat",
         name: "Nat"
     },
-    doc: r"A primitive type representing an unlimited-precision natural number.",
+    doc: r"A primitive type representing an arbitrary-precision natural number.",
     typ: Type::Primitive(Span::None, PrimitiveType::Nat)
 });
 

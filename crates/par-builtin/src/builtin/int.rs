@@ -14,7 +14,7 @@ inventory::submit!(ExternalTypeDef {
         module: "Int",
         name: "Int"
     },
-    doc: r"A primitive type representing an unlimited-precision integer.",
+    doc: r"A primitive type representing an arbitrary-precision integer.",
     typ: Type::Primitive(Span::None, PrimitiveType::Int)
 });
 
