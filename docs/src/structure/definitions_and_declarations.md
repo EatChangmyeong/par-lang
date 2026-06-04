@@ -80,7 +80,7 @@ module Main
 def MyNumber = 7
 ```
 
-In this case, Par is able to infer the type of `MyNumber` as [`Nat`](./primitive_types.md#nat)
+In this case, Par is able to infer the type of `MyNumber` as [`Nat`](./primitive_types.md)
 (a natural number), so no type annotation is needed. Often, a type annotation is needed, or wanted.
 In those cases, we can add it using a colon after the name:
 
