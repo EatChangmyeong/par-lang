@@ -17,6 +17,7 @@ inventory::submit!(ExternalTypeDef {
         module: "Float",
         name: "Float"
     },
+    doc: r"A primitive type representing a 64-bit floating point number.",
     typ: Type::Primitive(Span::None, PrimitiveType::Float)
 });
 

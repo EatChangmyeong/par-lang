@@ -2445,10 +2445,8 @@ fn write_global_name_in_file(
         }
 
         for (alias, module) in &scope.aliases {
-            if module == &name.module {
-                if name.primary == module.module {
-                    return write!(f, "{alias}");
-                }
+            if module == &name.module && name.is_primary_export() {
+                return write!(f, "{alias}");
             }
         }
     }

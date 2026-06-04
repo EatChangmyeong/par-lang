@@ -14,6 +14,7 @@ inventory::submit!(ExternalTypeDef {
         module: "Char",
         name: "Char"
     },
+    doc: r"A primitive type representing a [Unicode scalar value](https://www.unicode.org/glossary/#unicode_scalar_value).",
     typ: Type::Primitive(Span::None, PrimitiveType::Char)
 });
 

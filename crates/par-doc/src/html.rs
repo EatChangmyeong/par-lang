@@ -106,7 +106,7 @@ fn render_item_name_link(name: &GlobalName<Universal>, href: &str) -> String {
     let href = escape_html(href);
     let title = escape_html(&full_global_name(name));
 
-    if name.primary == *module_name {
+    if name.is_primary_export() {
         return format!(
             r#"<a class="item-link" href="{href}" title="{title}"><span class="item-name">{primary}</span></a>"#
         );
@@ -119,7 +119,7 @@ fn render_item_name_link(name: &GlobalName<Universal>, href: &str) -> String {
 }
 
 fn short_global_name(name: &GlobalName<Universal>) -> String {
-    if name.primary == name.module.module {
+    if name.is_primary_export() {
         name.primary.clone()
     } else {
         format!("{}.{}", name.module.module, name.primary)

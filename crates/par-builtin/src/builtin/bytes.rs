@@ -29,6 +29,7 @@ inventory::submit!(ExternalTypeDef {
         module: "Bytes",
         name: "Bytes"
     },
+    doc: r"A primitive type representing a sequence of bytes.",
     typ: Type::Primitive(Span::None, PrimitiveType::Bytes)
 });
 

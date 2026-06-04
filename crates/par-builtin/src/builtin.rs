@@ -223,24 +223,12 @@ fn load_external_type_defs(name: BuiltinPackage) -> BTreeMap<ModulePath, Externa
             directories: type_def.path.path.iter().map(|s| s.to_string()).collect(),
             module: type_def.path.module.into(),
         };
-        match externals.entry(module_path) {
-            Entry::Vacant(vacant) => {
-                let mut module = ExternalModule::default();
-                module.type_defs.push(TypeDef::external(
-                    type_def.path.name,
-                    &[],
-                    type_def.typ.clone(),
-                ));
-                vacant.insert(module);
-            }
-            Entry::Occupied(mut occupied) => {
-                occupied.get_mut().type_defs.push(TypeDef::external(
-                    type_def.path.name,
-                    &[],
-                    type_def.typ.clone(),
-                ));
-            }
-        }
+        let module = externals.entry(module_path).or_default();
+        module.type_defs.push(TypeDef::external(
+            type_def.path.name,
+            type_def.doc,
+            type_def.typ.clone(),
+        ));
     }
     externals
 }

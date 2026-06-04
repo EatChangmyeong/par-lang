@@ -340,13 +340,15 @@ fn sort_modules(modules: &mut [ModuleModel]) {
 
 fn sort_items(items: &mut [ItemModel]) {
     items.sort_by(|left, right| {
-        left.kind
-            .cmp(&right.kind)
+        (left.kind.cmp(&right.kind))
             .then_with(|| {
-                left.name
-                    .primary
-                    .to_lowercase()
-                    .cmp(&right.name.primary.to_lowercase())
+                // reverse-sort the bool: we want primary export first and true > false
+                (left.name.is_primary_export())
+                    .cmp(&right.name.is_primary_export())
+                    .reverse()
+            })
+            .then_with(|| {
+                (left.name.primary.to_lowercase()).cmp(&right.name.primary.to_lowercase())
             })
             .then_with(|| left.name.primary.cmp(&right.name.primary))
     });
