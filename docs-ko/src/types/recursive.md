@@ -226,22 +226,22 @@ def Head = [list] list.case {
    ```
 1. 입력받은 값에 `.begin`을 적용한다.
    ```par
-                        list.begin
+   list.begin
    ```
 2. 해당하는 값의 모든 선지에 대해 분기한다.
    ```par
-                                  .case {
+   .case {
      .end!       => 0,
      .item(x) xs =>
    ```
    리스트가 비어 있을 경우에는 합이 `0`이 된다. 그렇지 않으면 정수 `x`에
    ```par
-                    x +
+   x +
    ```
    리스트 나머지 부분 `xs`의 합을 더해야 한다.
-4. `xs`가 처음에 `.begin`을 적용한 `list`에서 *파생된* 값이므로, `.loop`를 사용해 `xs`의 합을 재귀적으로 구할 수 있다.
+3. `xs`가 처음에 `.begin`을 적용한 `list`에서 *파생된* 값이므로, `.loop`를 사용해 `xs`의 합을 재귀적으로 구할 수 있다.
    ```par
-                               xs.loop
+   xs.loop
    ```
    이제 중괄호를 닫으면 된다.
    ```par

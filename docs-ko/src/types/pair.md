@@ -41,7 +41,7 @@ type List<a> = recursive either {
 무한 스트림 타입은 순서쌍으로 다음 원소와 스트림의 나머지 부분을 동시에 생성할 수도 있다.
 
 ```par
-type Stream<a> = iterative choice {
+type InfiniteStream<a> = iterative choice {
   .close* => !,
   .next  => (a) self,
 }

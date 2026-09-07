@@ -158,6 +158,6 @@ writer.close.try
 
 여기서 `.try`는 오류 값을 자동 정리에 맡기는 대신 가장 가까운 `catch`에 전파한다. 두 문법에 대해서는 나중에 [오류 처리](../quality_of_life/error_handling.md)에서 자세히 다룬다.
 
-표준 라이브러리의 여러 곳에서도 이 패턴을 사용한다. `Console`, `Bytes.Reader`, `Bytes.Writer`는 `.close*`를, `Stream`은 `.cancel*`을, `Sql.Transaction`은 `.rollback*`을 제공한다.
+표준 라이브러리에서도 여러 곳에서 정리 표지를 사용한다. `Console`, `Bytes.Reader`, `Bytes.Writer`, `Stream`은 `.close*`을, `Sql.Transaction`은 `.rollback*`을 제공한다.
 
 모든 선택 타입에 정리 분지가 있는 것은 아니다. 정리 표지는 값을 버릴 때 이 분지를 선택하는 것이 항상 안전하다는 의미이며, 그런 성질을 가지는 분지가 없을 때는 표지를 사용하지 않는다. 이때는 선택 값이 순수 선형 값이 되어 명시적으로 사용해야 한다.
